@@ -1,99 +1,7 @@
 import { Link, useParams } from "react-router-dom";
-import { useMemo } from "react";
-
-type VesselMachine = {
-  id: string;
-  machineTag: string;
-  model: string;
-  type: string;
-  starterType: string;
-  location: string;
-  status: "online" | "down";
-  lastMaintenanceAt?: string;
-  lastReportType?: "preventive" | "corrective";
-};
-
-type VesselDetail = {
-  id: string;
-  name: string;
-  imoNumber: string;
-  description?: string;
-  machines: VesselMachine[];
-};
-
-const vessels: VesselDetail[] = [
-  {
-    id: "v1",
-    name: "MV Atlantic Star",
-    imoNumber: "9328421",
-    description: "Main refrigeration and HVAC service vessel overview.",
-    machines: [
-      {
-        id: "1",
-        machineTag: "CH-01",
-        model: "VSM89",
-        type: "Chiller",
-        starterType: "VSD",
-        location: "Engine Room",
-        status: "online",
-        lastMaintenanceAt: "2026-03-18T14:20:00Z",
-        lastReportType: "preventive",
-      },
-      {
-        id: "2",
-        machineTag: "CH-02",
-        model: "VSM2871",
-        type: "Chiller",
-        starterType: "SSS",
-        location: "Engine Room",
-        status: "down",
-        lastMaintenanceAt: "2026-03-12T09:10:00Z",
-        lastReportType: "corrective",
-      },
-      {
-        id: "4",
-        machineTag: "AC-05",
-        model: "VSM151",
-        type: "Air Conditioning Unit",
-        starterType: "EM Starter",
-        location: "Accommodation Deck",
-        status: "online",
-        lastMaintenanceAt: "2026-02-28T10:15:00Z",
-        lastReportType: "preventive",
-      },
-    ],
-  },
-  {
-    id: "v2",
-    name: "MV Ocean Wind",
-    imoNumber: "9457712",
-    description: "Accommodation and process cooling systems.",
-    machines: [
-      {
-        id: "3",
-        machineTag: "AC-01",
-        model: "VSM151",
-        type: "Air Conditioning Unit",
-        starterType: "EM Starter",
-        location: "Accommodation Deck",
-        status: "online",
-        lastMaintenanceAt: "2026-03-05T11:30:00Z",
-        lastReportType: "preventive",
-      },
-      {
-        id: "5",
-        machineTag: "BR-01",
-        model: "VSM300",
-        type: "Brine Pump Unit",
-        starterType: "VSD",
-        location: "Pump Room",
-        status: "down",
-        lastMaintenanceAt: "2026-03-01T08:40:00Z",
-        lastReportType: "corrective",
-      },
-    ],
-  },
-];
+import { useEffect, useMemo, useState } from "react";
+import { getVesselById } from "../../api/vesselsApi";
+import type { OfficeVessel } from "../../types/vessel";
 
 function statusClasses(status: "online" | "down") {
   return status === "online"
@@ -113,34 +21,70 @@ function reportTypeClasses(type?: "preventive" | "corrective") {
   return "bg-slate-100 text-slate-600";
 }
 
+type VesselMachineView = {
+  id: string;
+  machineTag: string;
+  model: string;
+  type: string;
+  starterType: string;
+  location: string;
+  status: "online" | "down";
+  lastMaintenanceAt?: string;
+  lastReportType?: "preventive" | "corrective";
+};
+
 export function VesselDetailPage() {
   const { vesselId } = useParams();
+  const [vessel, setVessel] = useState<OfficeVessel | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const vessel = useMemo(
-    () => vessels.find((item) => item.id === vesselId),
-    [vesselId]
-  );
+  useEffect(() => {
+    if (!vesselId) return;
+
+    const run = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getVesselById(vesselId);
+        setVessel(data);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load vessel.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    run();
+  }, [vesselId]);
+
+  const machineRows: VesselMachineView[] = useMemo(() => {
+    if (!vessel) return [];
+
+    return vessel.machines.map((machine) => ({
+      id: machine.id,
+      machineTag: machine.tag,
+      model: machine.model,
+      type: machine.type,
+      starterType: machine.starterType,
+      location: machine.location,
+      status: "online",
+      lastMaintenanceAt: undefined,
+      lastReportType: undefined,
+    }));
+  }, [vessel]);
 
   const metrics = useMemo(() => {
-    if (!vessel) {
-      return {
-        totalMachines: 0,
-        onlineMachines: 0,
-        downMachines: 0,
-        availability: 0,
-        preventiveDueSoon: 0,
-        correctiveOpen: 0,
-      };
-    }
-
-    const totalMachines = vessel.machines.length;
-    const onlineMachines = vessel.machines.filter((m) => m.status === "online").length;
-    const downMachines = vessel.machines.filter((m) => m.status === "down").length;
-    const correctiveOpen = vessel.machines.filter(
+    const totalMachines = machineRows.length;
+    const onlineMachines = machineRows.filter((m) => m.status === "online").length;
+    const downMachines = machineRows.filter((m) => m.status === "down").length;
+    const correctiveOpen = machineRows.filter(
       (m) => m.lastReportType === "corrective" && m.status === "down"
     ).length;
 
-    const preventiveDueSoon = vessel.machines.filter((m) => {
+    const preventiveDueSoon = machineRows.filter((m) => {
       if (!m.lastMaintenanceAt) return true;
 
       const last = new Date(m.lastMaintenanceAt).getTime();
@@ -161,12 +105,21 @@ export function VesselDetailPage() {
       preventiveDueSoon,
       correctiveOpen,
     };
-  }, [vessel]);
+  }, [machineRows]);
 
-  if (!vessel) {
+  if (loading) {
+    return (
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h1 className="text-xl font-semibold text-slate-900">Loading vessel...</h1>
+      </section>
+    );
+  }
+
+  if (error || !vessel) {
     return (
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <h1 className="text-xl font-semibold text-slate-900">Vessel not found</h1>
+        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
       </section>
     );
   }
@@ -234,7 +187,7 @@ export function VesselDetailPage() {
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <h2 className="text-lg font-semibold text-slate-900">Machines in vessel</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Latest machine status, report type, and maintenance activity.
+          Current machine registry for this vessel.
         </p>
 
         <div className="mt-6 overflow-x-auto">
@@ -251,16 +204,13 @@ export function VesselDetailPage() {
             </thead>
 
             <tbody>
-              {vessel.machines.map((machine) => (
+              {machineRows.map((machine) => (
                 <tr
                   key={machine.id}
                   className="border-t border-slate-200 hover:bg-slate-50"
                 >
                   <td className="px-6 py-4">
-                    <Link
-                      to={`/machines/${machine.id}`}
-                      className="block"
-                    >
+                    <Link to={`/machines/${machine.id}`} className="block">
                       <div className="text-sm font-semibold text-slate-900">
                         {machine.machineTag}
                       </div>

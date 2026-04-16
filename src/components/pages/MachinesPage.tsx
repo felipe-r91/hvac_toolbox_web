@@ -1,45 +1,8 @@
-import { useMemo, useState } from "react";
-import type { OfficeMachineRow } from "../../types/machine";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const machines: OfficeMachineRow[] = [
-  {
-    id: "1",
-    vesselName: "MV Atlantic Star",
-    machineTag: "CH-01",
-    model: "VSM89",
-    type: "Chiller",
-    starterType: "VSD",
-    location: "Engine Room",
-    status: "online",
-    lastMaintenanceAt: "2026-03-18T14:20:00Z",
-    lastReportType: "preventive",
-  },
-  {
-    id: "2",
-    vesselName: "MV Atlantic Star",
-    machineTag: "CH-02",
-    model: "VSM2871",
-    type: "Chiller",
-    starterType: "SSS",
-    location: "Engine Room",
-    status: "down",
-    lastMaintenanceAt: "2026-03-12T09:10:00Z",
-    lastReportType: "corrective",
-  },
-  {
-    id: "3",
-    vesselName: "MV Ocean Wind",
-    machineTag: "AC-01",
-    model: "VSM151",
-    type: "Air Conditioning Unit",
-    starterType: "EM Starter",
-    location: "Accommodation Deck",
-    status: "online",
-    lastMaintenanceAt: "2026-03-05T11:30:00Z",
-    lastReportType: "preventive",
-  },
-];
+import { getMachines, getVessels } from "../../api/vesselsApi";
+import type { OfficeMachine, OfficeMachineRow } from "../../types/machine";
+import type { OfficeVessel } from "../../types/vessel";
 
 function statusClasses(status: "online" | "down") {
   return status === "online"
@@ -60,25 +23,77 @@ function reportTypeClasses(type?: "preventive" | "corrective") {
 }
 
 export function MachinesPage() {
+  const navigate = useNavigate();
+
+  const [machines, setMachines] = useState<OfficeMachine[]>([]);
+  const [vessels, setVessels] = useState<OfficeVessel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [search, setSearch] = useState("");
   const [vesselFilter, setVesselFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [reportTypeFilter, setReportTypeFilter] = useState("all");
-  const navigate = useNavigate();
 
-  const vesselOptions = useMemo(() => {
-    return Array.from(new Set(machines.map((machine) => machine.vesselName))).sort();
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const [machinesData, vesselsData] = await Promise.all([
+          getMachines(),
+          getVessels(),
+        ]);
+
+        setMachines(machinesData);
+        setVessels(vesselsData);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load machines.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    run();
   }, []);
 
+  const machineRows = useMemo<OfficeMachineRow[]>(() => {
+    const vesselNameMap = new Map(vessels.map((vessel) => [vessel.id, vessel.name]));
+
+    return machines.map((machine) => ({
+      id: machine.id,
+      vesselId: machine.vesselId,
+      vesselName: vesselNameMap.get(machine.vesselId) || "Unknown Vessel",
+      machineTag: machine.tag,
+      model: machine.model,
+      serialNumber: machine.serialNumber,
+      type: machine.type,
+      starterType: machine.starterType,
+      location: machine.location,
+      status: "online",
+      lastMaintenanceAt: undefined,
+      lastReportType: undefined,
+    }));
+  }, [machines, vessels]);
+
+  const vesselOptions = useMemo(() => {
+    return Array.from(new Set(machineRows.map((machine) => machine.vesselName))).sort();
+  }, [machineRows]);
+
   const filteredMachines = useMemo(() => {
-    return machines.filter((machine) => {
+    return machineRows.filter((machine) => {
+      const term = search.trim().toLowerCase();
+
       const matchesSearch =
-        search.trim() === "" ||
-        machine.machineTag.toLowerCase().includes(search.toLowerCase()) ||
-        machine.model.toLowerCase().includes(search.toLowerCase()) ||
-        machine.type.toLowerCase().includes(search.toLowerCase()) ||
-        machine.location.toLowerCase().includes(search.toLowerCase()) ||
-        machine.vesselName.toLowerCase().includes(search.toLowerCase());
+        term === "" ||
+        machine.machineTag.toLowerCase().includes(term) ||
+        machine.model.toLowerCase().includes(term) ||
+        machine.type.toLowerCase().includes(term) ||
+        machine.location.toLowerCase().includes(term) ||
+        machine.vesselName.toLowerCase().includes(term) ||
+        machine.serialNumber.toLowerCase().includes(term);
 
       const matchesVessel =
         vesselFilter === "all" || machine.vesselName === vesselFilter;
@@ -96,12 +111,38 @@ export function MachinesPage() {
         matchesReportType
       );
     });
-  }, [search, vesselFilter, statusFilter, reportTypeFilter]);
+  }, [machineRows, search, vesselFilter, statusFilter, reportTypeFilter]);
+
+  if (loading) {
+    return (
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h1 className="text-2xl font-semibold text-slate-900">Machines</h1>
+        <p className="mt-2 text-sm text-slate-500">Loading machines...</p>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h1 className="text-2xl font-semibold text-slate-900">Machines</h1>
+        <p className="mt-2 text-sm text-red-600">{error}</p>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-6">
+      <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h1 className="text-2xl font-semibold text-slate-900">Machines</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Fleet machine overview with latest registry data.
+        </p>
+      </div>
+
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <label className="block">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-600">
               Search
             </span>
@@ -109,10 +150,10 @@ export function MachinesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tag, vessel, model..."
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2 text-md outline-none"
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
             />
           </label>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 mt-2">
+
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-600">
               Vessel
@@ -120,7 +161,7 @@ export function MachinesPage() {
             <select
               value={vesselFilter}
               onChange={(e) => setVesselFilter(e.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 h-10 text-md outline-none"
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
             >
               <option value="all">All vessels</option>
               {vesselOptions.map((vessel) => (
@@ -138,7 +179,7 @@ export function MachinesPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 h-10 text-md outline-none"
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
             >
               <option value="all">All statuses</option>
               <option value="online">Online</option>
@@ -153,7 +194,7 @@ export function MachinesPage() {
             <select
               value={reportTypeFilter}
               onChange={(e) => setReportTypeFilter(e.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 h-10 text-md outline-none"
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
             >
               <option value="all">All report types</option>
               <option value="preventive">Preventive</option>

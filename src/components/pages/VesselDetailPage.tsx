@@ -1,12 +1,20 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { getVesselById } from "../../api/vesselsApi";
+import { getMachineSummaries } from "../../api/machinesApi";
 import type { OfficeVessel } from "../../types/vessel";
+import type { OfficeMachineSummary } from "../../types/machine";
 
-function statusClasses(status: "online" | "down") {
-  return status === "online"
-    ? "bg-green-100 text-green-800 ring-green-200"
-    : "bg-red-100 text-red-800 ring-red-200";
+function statusClasses(status: "online" | "down" | "unknown") {
+  if (status === "online") {
+    return "bg-green-100 text-green-800 ring-green-200";
+  }
+
+  if (status === "down") {
+    return "bg-red-100 text-red-800 ring-red-200";
+  }
+
+  return "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
 function reportTypeClasses(type?: "preventive" | "corrective") {
@@ -21,21 +29,11 @@ function reportTypeClasses(type?: "preventive" | "corrective") {
   return "bg-slate-100 text-slate-600";
 }
 
-type VesselMachineView = {
-  id: string;
-  machineTag: string;
-  model: string;
-  type: string;
-  starterType: string;
-  location: string;
-  status: "online" | "down";
-  lastMaintenanceAt?: string;
-  lastReportType?: "preventive" | "corrective";
-};
-
 export function VesselDetailPage() {
   const { vesselId } = useParams();
+
   const [vessel, setVessel] = useState<OfficeVessel | null>(null);
+  const [machineSummaries, setMachineSummaries] = useState<OfficeMachineSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -47,8 +45,13 @@ export function VesselDetailPage() {
         setLoading(true);
         setError("");
 
-        const data = await getVesselById(vesselId);
-        setVessel(data);
+        const [vesselData, machineSummaryData] = await Promise.all([
+          getVesselById(vesselId),
+          getMachineSummaries(),
+        ]);
+
+        setVessel(vesselData);
+        setMachineSummaries(machineSummaryData);
       } catch (err) {
         console.error(err);
         setError("Failed to load vessel.");
@@ -60,34 +63,36 @@ export function VesselDetailPage() {
     run();
   }, [vesselId]);
 
-  const machineRows: VesselMachineView[] = useMemo(() => {
+  const vesselMachines = useMemo(() => {
     if (!vessel) return [];
 
-    return vessel.machines.map((machine) => ({
-      id: machine.id,
-      machineTag: machine.tag,
-      model: machine.model,
-      type: machine.type,
-      starterType: machine.starterType,
-      location: machine.location,
-      status: "online",
-      lastMaintenanceAt: undefined,
-      lastReportType: undefined,
-    }));
-  }, [vessel]);
+    return machineSummaries
+      .filter((machine) => machine.vesselId === vessel.id)
+      .sort((a, b) => a.machineTag.localeCompare(b.machineTag));
+  }, [vessel, machineSummaries]);
 
   const metrics = useMemo(() => {
-    const totalMachines = machineRows.length;
-    const onlineMachines = machineRows.filter((m) => m.status === "online").length;
-    const downMachines = machineRows.filter((m) => m.status === "down").length;
-    const correctiveOpen = machineRows.filter(
-      (m) => m.lastReportType === "corrective" && m.status === "down"
+    const totalMachines = vesselMachines.length;
+    const onlineMachines = vesselMachines.filter(
+      (m) => m.latestKnownStatus === "online"
+    ).length;
+    const downMachines = vesselMachines.filter(
+      (m) => m.latestKnownStatus === "down"
+    ).length;
+    const unknownMachines = vesselMachines.filter(
+      (m) => !m.latestKnownStatus || m.latestKnownStatus === "unknown"
     ).length;
 
-    const preventiveDueSoon = machineRows.filter((m) => {
-      if (!m.lastMaintenanceAt) return true;
+    const correctiveOpen = vesselMachines.filter(
+      (m) => m.latestReportType === "corrective" && m.latestKnownStatus === "down"
+    ).length;
 
-      const last = new Date(m.lastMaintenanceAt).getTime();
+    const preventiveDueSoon = vesselMachines.filter((m) => {
+      if (!m.latestReportDate || m.latestReportType !== "preventive") {
+        return true;
+      }
+
+      const last = new Date(m.latestReportDate).getTime();
       const now = Date.now();
       const days = (now - last) / (1000 * 60 * 60 * 24);
 
@@ -101,11 +106,12 @@ export function VesselDetailPage() {
       totalMachines,
       onlineMachines,
       downMachines,
+      unknownMachines,
       availability,
       preventiveDueSoon,
       correctiveOpen,
     };
-  }, [machineRows]);
+  }, [vesselMachines]);
 
   if (loading) {
     return (
@@ -147,7 +153,7 @@ export function VesselDetailPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <p className="text-sm text-slate-500">Total Machines</p>
           <p className="mt-3 text-3xl font-semibold text-slate-900">
@@ -170,6 +176,13 @@ export function VesselDetailPage() {
         </div>
 
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <p className="text-sm text-slate-500">Unknown</p>
+          <p className="mt-3 text-3xl font-semibold text-slate-900">
+            {metrics.unknownMachines}
+          </p>
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <p className="text-sm text-slate-500">Preventive Due Soon</p>
           <p className="mt-3 text-3xl font-semibold text-slate-900">
             {metrics.preventiveDueSoon}
@@ -187,7 +200,7 @@ export function VesselDetailPage() {
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <h2 className="text-lg font-semibold text-slate-900">Machines in vessel</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Current machine registry for this vessel.
+          Current machine status and latest report summary.
         </p>
 
         <div className="mt-6 overflow-x-auto">
@@ -198,59 +211,80 @@ export function VesselDetailPage() {
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Model</th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Location</th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Status</th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Last Maintenance</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Last Activity</th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Last Report</th>
               </tr>
             </thead>
 
             <tbody>
-              {machineRows.map((machine) => (
-                <tr
-                  key={machine.id}
-                  className="border-t border-slate-200 hover:bg-slate-50"
-                >
-                  <td className="px-6 py-4">
-                    <Link to={`/machines/${machine.id}`} className="block">
-                      <div className="text-sm font-semibold text-slate-900">
-                        {machine.machineTag}
+              {vesselMachines.length > 0 ? (
+                vesselMachines.map((machine) => (
+                  <tr
+                    key={machine.machineId}
+                    className="border-t border-slate-200 hover:bg-slate-50"
+                  >
+                    <td className="px-6 py-4">
+                      <Link to={`/machines/${machine.machineId}`} className="block">
+                        <div className="text-sm font-semibold text-slate-900">
+                          {machine.machineTag}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {machine.type} · {machine.starterType}
+                        </div>
+                      </Link>
+                    </td>
+
+                    <td className="px-6 py-4 text-sm text-slate-700">
+                      {machine.model}
+                    </td>
+
+                    <td className="px-6 py-4 text-sm text-slate-700">
+                      {machine.location}
+                    </td>
+
+                    <td className="px-6 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${statusClasses(
+                          machine.latestKnownStatus || "unknown"
+                        )}`}
+                      >
+                        {machine.latestKnownStatus || "unknown"}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-4 text-sm text-slate-700">
+                      {machine.latestReportDate
+                        ? new Date(machine.latestReportDate).toLocaleString()
+                        : "—"}
+                    </td>
+
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col items-start gap-2">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${reportTypeClasses(
+                            machine.latestReportType
+                          )}`}
+                        >
+                          {machine.latestReportType ?? "—"}
+                        </span>
+
+                        <span className="text-xs text-slate-400">
+                          P: {machine.preventiveReportCount} · C: {machine.correctiveDraftCount}
+                        </span>
                       </div>
-                      <div className="text-xs text-slate-500">
-                        {machine.type} · {machine.starterType}
-                      </div>
-                    </Link>
-                  </td>
-
-                  <td className="px-6 py-4 text-sm text-slate-700">{machine.model}</td>
-
-                  <td className="px-6 py-4 text-sm text-slate-700">{machine.location}</td>
-
-                  <td className="px-6 py-4">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${statusClasses(
-                        machine.status
-                      )}`}
-                    >
-                      {machine.status}
-                    </span>
-                  </td>
-
-                  <td className="px-6 py-4 text-sm text-slate-700">
-                    {machine.lastMaintenanceAt
-                      ? new Date(machine.lastMaintenanceAt).toLocaleString()
-                      : "—"}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-medium ${reportTypeClasses(
-                        machine.lastReportType
-                      )}`}
-                    >
-                      {machine.lastReportType ?? "—"}
-                    </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-10 text-center text-sm text-slate-500"
+                  >
+                    No machines found for this vessel.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

@@ -1,4 +1,7 @@
 import { Link, useLocation, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getVesselById } from "../../api/vesselsApi";
+import { getMachineSummaryById } from "../../api/machineDetailApi";
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -9,79 +12,148 @@ const routeTitles: Record<string, string> = {
   "/insights": "Insights",
 };
 
-const vesselBreadcrumbs: Record<string, { vesselName: string }> = {
-  v1: { vesselName: "MV Atlantic Star" },
-  v2: { vesselName: "MV Ocean Wind" },
+type VesselBreadcrumbData = {
+  vesselName: string;
 };
 
-const machineBreadcrumbs: Record<
-  string,
-  { vesselId: string; vesselName: string; machineTag: string }
-> = {
-  "1": { vesselId: "v1", vesselName: "MV Atlantic Star", machineTag: "CH-01" },
-  "2": { vesselId: "v1", vesselName: "MV Atlantic Star", machineTag: "CH-02" },
-  "3": { vesselId: "v2", vesselName: "MV Ocean Wind", machineTag: "AC-01" },
-  "4": { vesselId: "v1", vesselName: "MV Atlantic Star", machineTag: "AC-05" },
-  "5": { vesselId: "v2", vesselName: "MV Ocean Wind", machineTag: "BR-01" },
+type MachineBreadcrumbData = {
+  vesselId: string;
+  vesselName: string;
+  machineTag: string;
 };
 
 export function Topbar() {
   const location = useLocation();
   const { machineId, vesselId } = useParams();
 
-  if (location.pathname.startsWith("/machines/") && machineId) {
-    const machine = machineBreadcrumbs[machineId];
+  const [vesselData, setVesselData] = useState<VesselBreadcrumbData | null>(null);
+  const [machineData, setMachineData] = useState<MachineBreadcrumbData | null>(null);
 
-    if (machine) {
-      return (
-        <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-          <div className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Link to="/machines" className="text-slate-600 hover:text-slate-900">
-              Machines
-            </Link>
-            <span className="text-slate-400">/</span>
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadVessel = async () => {
+      if (!location.pathname.startsWith("/vessels/") || !vesselId) {
+        setVesselData(null);
+        return;
+      }
+
+      try {
+        const vessel = await getVesselById(vesselId);
+
+        if (!cancelled) {
+          setVesselData({
+            vesselName: vessel.name,
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) {
+          setVesselData(null);
+        }
+      }
+    };
+
+    loadVessel();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname, vesselId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMachine = async () => {
+      if (!location.pathname.startsWith("/machines/") || !machineId) {
+        setMachineData(null);
+        return;
+      }
+
+      try {
+        const machine = await getMachineSummaryById(machineId);
+
+        if (!cancelled) {
+          setMachineData({
+            vesselId: machine.vesselId,
+            vesselName: machine.vesselName,
+            machineTag: machine.machineTag,
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) {
+          setMachineData(null);
+        }
+      }
+    };
+
+    loadMachine();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname, machineId]);
+
+  if (location.pathname.startsWith("/machines/") && machineId) {
+    return (
+      <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
+        <div className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <Link to="/machines" className="text-slate-600 hover:text-slate-900">
+            Machines
+          </Link>
+
+          <span className="text-slate-400">/</span>
+
+          {machineData ? (
             <Link
-              to={`/vessels/${machine.vesselId}`}
+              to={`/vessels/${machineData.vesselId}`}
               className="text-slate-600 hover:text-slate-900"
             >
-              {machine.vesselName}
+              {machineData.vesselName}
             </Link>
-            <span className="text-slate-400">/</span>
-            <span className="text-slate-900">{machine.machineTag}</span>
-          </div>
+          ) : (
+            <span className="text-slate-400">Loading...</span>
+          )}
 
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
-              Technician / Manager
-            </div>
+          <span className="text-slate-400">/</span>
+
+          <span className="text-slate-900">
+            {machineData?.machineTag || machineId}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
+            Technician / Manager
           </div>
-        </header>
-      );
-    }
+        </div>
+      </header>
+    );
   }
 
   if (location.pathname.startsWith("/vessels/") && vesselId) {
-    const vessel = vesselBreadcrumbs[vesselId];
+    return (
+      <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
+        <div className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <Link to="/vessels" className="text-slate-600 hover:text-slate-900">
+            Vessels
+          </Link>
 
-    if (vessel) {
-      return (
-        <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-          <div className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Link to="/vessels" className="text-slate-600 hover:text-slate-900">
-              Vessels
-            </Link>
-            <span className="text-slate-400">/</span>
-            <span className="text-slate-900">{vessel.vesselName}</span>
-          </div>
+          <span className="text-slate-400">/</span>
 
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
-              Technician / Manager
-            </div>
+          <span className="text-slate-900">
+            {vesselData?.vesselName || vesselId}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
+            Technician / Manager
           </div>
-        </header>
-      );
-    }
+        </div>
+      </header>
+    );
   }
 
   const title = routeTitles[location.pathname] ?? "HVAC Toolbox";

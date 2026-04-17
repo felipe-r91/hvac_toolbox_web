@@ -131,19 +131,27 @@ export function VesselDetailPage() {
 
   return (
     <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 xl:col-span-2">
-          <p className="text-sm text-slate-500">Vessel</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{vessel.name}</p>
-          <p className="mt-2 text-sm text-slate-500">IMO: {vessel.imoNumber}</p>
-          {vessel.description ? (
-            <p className="mt-2 text-sm text-slate-500">{vessel.description}</p>
-          ) : null}
-          <p className="mt-3 text-xs font-medium text-slate-500">
-            Availability: {metrics.availability}%
-          </p>
-        </div>
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-sm text-slate-500">Vessel</p>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">{vessel.name}</h1>
+            <p className="mt-3 text-sm text-slate-500">IMO: {vessel.imoNumber}</p>
+            {vessel.description ? (
+              <p className="mt-2 text-sm text-slate-500">{vessel.description}</p>
+            ) : null}
+          </div>
 
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
+            <p className="text-xs font-medium text-slate-500">Machine availability</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">
+              {metrics.availability}%
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <p className="text-sm text-slate-500">Total Machines</p>
           <p className="mt-3 text-3xl font-semibold text-slate-900">
@@ -179,7 +187,7 @@ export function VesselDetailPage() {
           </p>
         </div>
 
-        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 md:col-span-2 xl:col-span-1">
           <p className="text-sm text-slate-500">Corrective Open</p>
           <p className="mt-3 text-3xl font-semibold text-slate-900">
             {metrics.correctiveOpen}
@@ -251,10 +259,6 @@ export function VesselDetailPage() {
                           )}`}
                         >
                           {machine.latestReportType ?? "—"}
-                        </span>
-
-                        <span className="text-xs text-slate-400">
-                          P: {machine.preventiveReportCount} · C: {machine.correctiveDraftCount}
                         </span>
                       </div>
                     </td>

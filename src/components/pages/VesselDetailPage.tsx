@@ -116,7 +116,7 @@ export function VesselDetailPage() {
   if (loading) {
     return (
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-xl font-semibold text-slate-900">Loading vessel...</h1>
+        <p className="text-sm text-slate-500">Loading vessel...</p>
       </section>
     );
   }
@@ -124,36 +124,26 @@ export function VesselDetailPage() {
   if (error || !vessel) {
     return (
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-xl font-semibold text-slate-900">Vessel not found</h1>
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        <p className="text-sm text-red-600">{error || "Vessel not found."}</p>
       </section>
     );
   }
 
   return (
-    <section className="space-y-6">
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <p className="text-sm text-slate-500">Vessels / {vessel.name}</p>
-
-        <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{vessel.name}</h1>
-            <p className="mt-2 text-sm text-slate-500">IMO: {vessel.imoNumber}</p>
-            {vessel.description ? (
-              <p className="mt-2 text-sm text-slate-500">{vessel.description}</p>
-            ) : null}
-          </div>
-
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
-            <p className="text-xs font-medium text-slate-500">Machine availability</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-900">
-              {metrics.availability}%
-            </p>
-          </div>
-        </div>
-      </section>
-
+    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 xl:col-span-2">
+          <p className="text-sm text-slate-500">Vessel</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{vessel.name}</p>
+          <p className="mt-2 text-sm text-slate-500">IMO: {vessel.imoNumber}</p>
+          {vessel.description ? (
+            <p className="mt-2 text-sm text-slate-500">{vessel.description}</p>
+          ) : null}
+          <p className="mt-3 text-xs font-medium text-slate-500">
+            Availability: {metrics.availability}%
+          </p>
+        </div>
+
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <p className="text-sm text-slate-500">Total Machines</p>
           <p className="mt-3 text-3xl font-semibold text-slate-900">
@@ -197,15 +187,10 @@ export function VesselDetailPage() {
         </div>
       </section>
 
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 className="text-lg font-semibold text-slate-900">Machines in vessel</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Current machine status and latest report summary.
-        </p>
-
-        <div className="mt-6 overflow-x-auto">
+      <section className="min-h-0 flex-1 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="h-full overflow-auto">
           <table className="min-w-full border-collapse">
-            <thead className="bg-slate-50">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr className="text-left">
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Machine</th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Model</th>

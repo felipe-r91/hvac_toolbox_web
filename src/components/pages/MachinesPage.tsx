@@ -96,8 +96,7 @@ export function MachinesPage() {
   if (loading) {
     return (
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-2xl font-semibold text-slate-900">Machines</h1>
-        <p className="mt-2 text-sm text-slate-500">Loading machines...</p>
+        <p className="text-sm text-slate-500">Loading machines...</p>
       </section>
     );
   }
@@ -105,22 +104,14 @@ export function MachinesPage() {
   if (error) {
     return (
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-2xl font-semibold text-slate-900">Machines</h1>
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-600">{error}</p>
       </section>
     );
   }
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-2xl font-semibold text-slate-900">Machines</h1>
-        <p className="mt-2 text-sm text-slate-500">
-          Fleet machine overview with latest report and status summary.
-        </p>
-      </div>
-
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
+      <section className="sticky top-0 z-20 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-600">
@@ -204,10 +195,10 @@ export function MachinesPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-        <div className="overflow-x-auto">
+      <section className="min-h-0 flex-1 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="h-full overflow-auto">
           <table className="min-w-full border-collapse">
-            <thead className="bg-slate-50">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr className="text-left">
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Vessel</th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Machine</th>
@@ -272,10 +263,6 @@ export function MachinesPage() {
                           )}`}
                         >
                           {machine.latestReportType ?? "—"}
-                        </span>
-
-                        <span className="text-xs text-slate-400">
-                          P: {machine.preventiveReportCount} · C: {machine.correctiveDraftCount}
                         </span>
                       </div>
                     </td>

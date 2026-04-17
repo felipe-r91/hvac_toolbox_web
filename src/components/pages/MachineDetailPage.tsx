@@ -81,7 +81,7 @@ export function MachineDetailPage() {
   if (loading) {
     return (
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-xl font-semibold text-slate-900">Loading machine...</h1>
+        <p className="text-sm text-slate-500">Loading machine...</p>
       </section>
     );
   }
@@ -89,20 +89,15 @@ export function MachineDetailPage() {
   if (error || !machine) {
     return (
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-xl font-semibold text-slate-900">Machine not found</h1>
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        <p className="text-sm text-red-600">{error || "Machine not found."}</p>
       </section>
     );
   }
 
   return (
-    <section className="space-y-6">
+    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <p className="text-sm text-slate-500">
-          Machines / {machine.vesselName} / {machine.machineTag}
-        </p>
-
-        <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">
               {machine.machineTag}
@@ -139,95 +134,97 @@ export function MachineDetailPage() {
             <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
               <p className="text-xs font-medium text-slate-500">Reports</p>
               <p className="mt-1 text-sm text-slate-800">
-                P: {machine.preventiveReportCount} · C: {machine.correctiveDraftCount}
+                Preventive: {machine.preventiveReportCount} · Corrective: {machine.correctiveDraftCount}
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-2">
-          <h2 className="text-lg font-semibold text-slate-900">Reports timeline</h2>
+      <section className="min-h-0 flex-1 overflow-auto">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-2">
+            <h2 className="text-lg font-semibold text-slate-900">Reports timeline</h2>
 
-          <div className="mt-4 space-y-4">
-            {timeline.length > 0 ? (
-              timeline.map((item) => (
-                <div
-                  key={`${item.type}-${item.id}`}
-                  className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-900">
-                        {item.title}
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {new Date(item.date).toLocaleString()}
-                      </p>
+            <div className="mt-4 space-y-4">
+              {timeline.length > 0 ? (
+                timeline.map((item) => (
+                  <div
+                    key={`${item.type}-${item.id}`}
+                    className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-900">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {new Date(item.date).toLocaleString()}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportTypeClasses(
+                            item.type
+                          )}`}
+                        >
+                          {item.type}
+                        </span>
+
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
+                            item.status
+                          )}`}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportTypeClasses(
-                          item.type
-                        )}`}
-                      >
-                        {item.type}
-                      </span>
+                    <p className="mt-3 text-sm text-slate-600">{item.summary}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 ring-1 ring-slate-200">
+                  No report history found.
+                </div>
+              )}
+            </div>
+          </section>
 
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
-                          item.status
-                        )}`}
-                      >
-                        {item.status}
-                      </span>
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <h2 className="text-lg font-semibold text-slate-900">Recurring failures</h2>
+
+            <div className="mt-4 space-y-3">
+              {recurringFailures.length > 0 ? (
+                recurringFailures.map((failure) => (
+                  <div
+                    key={failure.label}
+                    className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200"
+                  >
+                    <div className="text-sm text-slate-800">{failure.label}</div>
+                    <div className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
+                      {failure.count}x
                     </div>
                   </div>
-
-                  <p className="mt-3 text-sm text-slate-600">{item.summary}</p>
+                ))
+              ) : (
+                <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 ring-1 ring-slate-200">
+                  No recurring failures registered.
                 </div>
-              ))
-            ) : (
-              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 ring-1 ring-slate-200">
-                No report history found.
-              </div>
-            )}
-          </div>
-        </section>
+              )}
+            </div>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <h2 className="text-lg font-semibold text-slate-900">Recurring failures</h2>
-
-          <div className="mt-4 space-y-3">
-            {recurringFailures.length > 0 ? (
-              recurringFailures.map((failure) => (
-                <div
-                  key={failure.label}
-                  className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200"
-                >
-                  <div className="text-sm text-slate-800">{failure.label}</div>
-                  <div className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
-                    {failure.count}x
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 ring-1 ring-slate-200">
-                No recurring failures registered.
-              </div>
-            )}
-          </div>
-
-          <div className="mt-6 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-            <h3 className="text-sm font-semibold text-slate-900">Variable trends</h3>
-            <p className="mt-2 text-sm text-slate-500">
-              Trend charts will be displayed here once machine variable readings are enabled.
-            </p>
-          </div>
-        </section>
-      </div>
+            <div className="mt-6 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <h3 className="text-sm font-semibold text-slate-900">Variable trends</h3>
+              <p className="mt-2 text-sm text-slate-500">
+                Trend charts will be displayed here once machine variable readings are enabled.
+              </p>
+            </div>
+          </section>
+        </div>
+      </section>
     </section>
   );
 }

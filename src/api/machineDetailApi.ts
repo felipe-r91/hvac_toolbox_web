@@ -10,6 +10,12 @@ export type MachineTimelineItem = {
   status: "online" | "down" | "unknown";
   title: string;
   summary: string;
+  failureComponent?: string;
+  failureMode?: string;
+  failureCode?: string;
+
+  linkedCorrectiveDraftId?: string;
+  sourcePreventiveReportId?: string;
 };
 
 export async function getMachineSummaryById(

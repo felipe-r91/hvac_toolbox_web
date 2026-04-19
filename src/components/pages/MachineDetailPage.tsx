@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   getMachineCorrectiveReports,
   getMachinePreventiveReports,
@@ -12,8 +12,8 @@ function statusClasses(status: "online" | "down" | "unknown") {
   return status === "online"
     ? "bg-green-100 text-green-800 ring-green-200"
     : status === "down"
-    ? "bg-red-100 text-red-800 ring-red-200"
-    : "bg-slate-100 text-slate-700 ring-slate-200";
+      ? "bg-red-100 text-red-800 ring-red-200"
+      : "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
 function reportTypeClasses(type: "preventive" | "corrective") {
@@ -22,11 +22,107 @@ function reportTypeClasses(type: "preventive" | "corrective") {
     : "bg-yellow-100 text-yellow-800";
 }
 
+function formatFailureCode(code?: string) {
+  if (!code) return "Unknown";
+  return code
+    .split("_")
+    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function buildRecurringFailureLabel(item: MachineTimelineItem) {
+  if (item.failureCode) {
+    return formatFailureCode(item.failureCode);
+  }
+
+  if (item.failureComponent && item.failureMode) {
+    return `${item.failureComponent} · ${item.failureMode}`;
+  }
+
+  if (item.failureMode) {
+    return item.failureMode;
+  }
+
+  if (item.failureComponent) {
+    return item.failureComponent;
+  }
+
+  return null;
+}
+
+type DisplayTimelineItem =
+  | {
+      kind: "single";
+      item: MachineTimelineItem;
+      date: string;
+    }
+  | {
+      kind: "linked";
+      preventive: MachineTimelineItem;
+      corrective: MachineTimelineItem;
+      date: string;
+      status: "online" | "down" | "unknown";
+    };
+
+function buildDisplayTimeline(
+  preventive: MachineTimelineItem[],
+  corrective: MachineTimelineItem[]
+): DisplayTimelineItem[] {
+  const correctiveBySourcePreventiveId = new Map<string, MachineTimelineItem>();
+  const linkedCorrectiveIds = new Set<string>();
+
+  corrective.forEach((item) => {
+    if (item.sourcePreventiveReportId) {
+      correctiveBySourcePreventiveId.set(item.sourcePreventiveReportId, item);
+    }
+  });
+
+  const merged: DisplayTimelineItem[] = [];
+
+  preventive.forEach((preventiveItem) => {
+    const linkedCorrective =
+      preventiveItem.linkedCorrectiveDraftId
+        ? corrective.find((c) => c.id === preventiveItem.linkedCorrectiveDraftId)
+        : correctiveBySourcePreventiveId.get(preventiveItem.id);
+
+    if (linkedCorrective) {
+      linkedCorrectiveIds.add(linkedCorrective.id);
+
+      merged.push({
+        kind: "linked",
+        preventive: preventiveItem,
+        corrective: linkedCorrective,
+        date: linkedCorrective.date || preventiveItem.date,
+        status: linkedCorrective.status || preventiveItem.status,
+      });
+    } else {
+      merged.push({
+        kind: "single",
+        item: preventiveItem,
+        date: preventiveItem.date,
+      });
+    }
+  });
+
+  corrective.forEach((correctiveItem) => {
+    if (!linkedCorrectiveIds.has(correctiveItem.id)) {
+      merged.push({
+        kind: "single",
+        item: correctiveItem,
+        date: correctiveItem.date,
+      });
+    }
+  });
+
+  return merged.sort((a, b) => b.date.localeCompare(a.date));
+}
+
 export function MachineDetailPage() {
   const { machineId } = useParams();
 
   const [machine, setMachine] = useState<OfficeMachineSummary | null>(null);
-  const [timeline, setTimeline] = useState<MachineTimelineItem[]>([]);
+  const [preventiveTimeline, setPreventiveTimeline] = useState<MachineTimelineItem[]>([]);
+  const [correctiveTimeline, setCorrectiveTimeline] = useState<MachineTimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -44,12 +140,9 @@ export function MachineDetailPage() {
           getMachineCorrectiveReports(machineId),
         ]);
 
-        const mergedTimeline = [...preventive, ...corrective].sort((a, b) =>
-          b.date.localeCompare(a.date)
-        );
-
         setMachine(machineData);
-        setTimeline(mergedTimeline);
+        setPreventiveTimeline(preventive);
+        setCorrectiveTimeline(corrective);
       } catch (err) {
         console.error(err);
         setError("Failed to load machine.");
@@ -61,22 +154,25 @@ export function MachineDetailPage() {
     run();
   }, [machineId]);
 
+  const displayTimeline = useMemo(() => {
+    return buildDisplayTimeline(preventiveTimeline, correctiveTimeline);
+  }, [preventiveTimeline, correctiveTimeline]);
+
   const recurringFailures = useMemo(() => {
     const failureMap = new Map<string, number>();
 
-    timeline
-      .filter((item) => item.type === "corrective")
-      .forEach((item) => {
-        const key = item.summary?.trim();
-        if (!key) return;
-        failureMap.set(key, (failureMap.get(key) || 0) + 1);
-      });
+    correctiveTimeline.forEach((item) => {
+      const key = buildRecurringFailureLabel(item);
+      if (!key) return;
+
+      failureMap.set(key, (failureMap.get(key) || 0) + 1);
+    });
 
     return Array.from(failureMap.entries())
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-  }, [timeline]);
+  }, [correctiveTimeline]);
 
   if (loading) {
     return (
@@ -147,44 +243,167 @@ export function MachineDetailPage() {
             <h2 className="text-lg font-semibold text-slate-900">Reports timeline</h2>
 
             <div className="mt-4 space-y-4">
-              {timeline.length > 0 ? (
-                timeline.map((item) => (
-                  <div
-                    key={`${item.type}-${item.id}`}
-                    className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-slate-900">
-                          {item.title}
-                        </h3>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {new Date(item.date).toLocaleString()}
+              {displayTimeline.length > 0 ? (
+                displayTimeline.map((entry) => {
+                  if (entry.kind === "linked") {
+                    const preventive = entry.preventive;
+                    const corrective = entry.corrective;
+
+                    return (
+                      <div
+                        key={`linked-${preventive.id}-${corrective.id}`}
+                        className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-semibold text-slate-900">
+                              Preventive maintenance with failure detected
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {new Date(entry.date).toLocaleString()}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-800">
+                              preventive
+                            </span>
+                            <span className="rounded-full px-2.5 py-1 text-xs font-medium bg-yellow-100 text-yellow-800">
+                              corrective
+                            </span>
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
+                                entry.status
+                              )}`}
+                            >
+                              {entry.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="mt-3 text-sm text-slate-600">
+                          {corrective.summary || preventive.summary}
                         </p>
+
+                        {(corrective.failureCode ||
+                          corrective.failureComponent ||
+                          corrective.failureMode) ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {corrective.failureCode ? (
+                              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
+                                {formatFailureCode(corrective.failureCode)}
+                              </span>
+                            ) : null}
+
+                            {corrective.failureComponent ? (
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                {corrective.failureComponent}
+                              </span>
+                            ) : null}
+
+                            {corrective.failureMode ? (
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                {corrective.failureMode}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <Link
+                            to={`/reports/${preventive.id}`}
+                            className="rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
+                          >
+                            Open preventive
+                          </Link>
+
+                          <Link
+                            to={`/corrective-reports/${corrective.id}`}
+                            className="rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
+                          >
+                            Open corrective
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const item = entry.item;
+
+                  return (
+                    <div
+                      key={`${item.type}-${item.id}`}
+                      className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            {item.title}
+                          </h3>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {new Date(item.date).toLocaleString()}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportTypeClasses(
+                              item.type
+                            )}`}
+                          >
+                            {item.type}
+                          </span>
+
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
+                              item.status
+                            )}`}
+                          >
+                            {item.status}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportTypeClasses(
-                            item.type
-                          )}`}
-                        >
-                          {item.type}
-                        </span>
+                      <p className="mt-3 text-sm text-slate-600">{item.summary}</p>
 
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
-                            item.status
-                          )}`}
+                      {item.type === "corrective" &&
+                      (item.failureCode || item.failureComponent || item.failureMode) ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {item.failureCode ? (
+                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
+                              {formatFailureCode(item.failureCode)}
+                            </span>
+                          ) : null}
+
+                          {item.failureComponent ? (
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                              {item.failureComponent}
+                            </span>
+                          ) : null}
+
+                          {item.failureMode ? (
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                              {item.failureMode}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      <div className="mt-4">
+                        <Link
+                          to={
+                            item.type === "preventive"
+                              ? `/reports/${item.id}`
+                              : `/corrective-reports/${item.id}`
+                          }
+                          className="inline-flex rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
                         >
-                          {item.status}
-                        </span>
+                          Open {item.type}
+                        </Link>
                       </div>
                     </div>
-
-                    <p className="mt-3 text-sm text-slate-600">{item.summary}</p>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 ring-1 ring-slate-200">
                   No report history found.

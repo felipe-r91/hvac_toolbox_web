@@ -61,7 +61,6 @@ type DisplayTimelineItem =
       preventive: MachineTimelineItem;
       corrective: MachineTimelineItem;
       date: string;
-      status: "online" | "down" | "unknown";
     };
 
 function buildDisplayTimeline(
@@ -93,7 +92,6 @@ function buildDisplayTimeline(
         preventive: preventiveItem,
         corrective: linkedCorrective,
         date: linkedCorrective.date || preventiveItem.date,
-        status: linkedCorrective.status || preventiveItem.status,
       });
     } else {
       merged.push({
@@ -257,7 +255,7 @@ export function MachineDetailPage() {
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <h3 className="text-sm font-semibold text-slate-900">
-                              Preventive maintenance with failure detected
+                              Corrective Maintenance
                             </h3>
                             <p className="mt-1 text-xs text-slate-500">
                               {new Date(entry.date).toLocaleString()}
@@ -265,24 +263,21 @@ export function MachineDetailPage() {
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-800">
-                              preventive
-                            </span>
                             <span className="rounded-full px-2.5 py-1 text-xs font-medium bg-yellow-100 text-yellow-800">
                               corrective
                             </span>
                             <span
                               className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
-                                entry.status
+                                "down"
                               )}`}
                             >
-                              {entry.status}
+                              down
                             </span>
                           </div>
                         </div>
 
                         <p className="mt-3 text-sm text-slate-600">
-                          {corrective.summary || preventive.summary}
+                          {corrective.summary}
                         </p>
 
                         {(corrective.failureCode ||
@@ -311,17 +306,17 @@ export function MachineDetailPage() {
 
                         <div className="mt-4 flex flex-wrap gap-2">
                           <Link
-                            to={`/reports/${preventive.id}`}
-                            className="rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
-                          >
-                            Open preventive
-                          </Link>
-
-                          <Link
                             to={`/corrective-reports/${corrective.id}`}
                             className="rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
                           >
                             Open corrective
+                          </Link>
+
+                          <Link
+                            to={`/reports/${preventive.id}`}
+                            className="rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
+                          >
+                            Open health check
                           </Link>
                         </div>
                       </div>
@@ -398,7 +393,7 @@ export function MachineDetailPage() {
                           }
                           className="inline-flex rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
                         >
-                          Open {item.type}
+                          Open {item.type === "preventive" ? "health check" : "corrective"}
                         </Link>
                       </div>
                     </div>

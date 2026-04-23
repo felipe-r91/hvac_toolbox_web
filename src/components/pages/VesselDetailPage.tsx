@@ -33,6 +33,22 @@ function reportTypeClasses(type?: "health_check" | "corrective" | "cfr") {
   return "bg-slate-100 text-slate-600";
 }
 
+function formatRepportType(type?: "health_check" | "corrective" | "cfr") {
+  if (type === "health_check") {
+    return "Health Check";
+  }
+
+  if (type === "corrective") {
+    return "Corrective";
+  }
+
+  if (type === "cfr") {
+    return "CFR";
+  }
+
+  return "—";
+}
+
 export function VesselDetailPage() {
   const { vesselId } = useParams();
 
@@ -262,7 +278,7 @@ export function VesselDetailPage() {
                             machine.latestReportType
                           )}`}
                         >
-                          {machine.latestReportType ?? "—"}
+                          {formatRepportType(machine.latestReportType)}
                         </span>
                       </div>
                     </td>

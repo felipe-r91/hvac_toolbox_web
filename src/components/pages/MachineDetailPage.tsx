@@ -1,9 +1,8 @@
 import { useMemo, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
-  getMachineCorrectiveReports,
-  getMachinePreventiveReports,
   getMachineSummaryById,
+  getMachineTimeline,
   type MachineTimelineItem,
 } from "../../api/machineDetailApi";
 import type { OfficeMachineSummary } from "../../types/machine";
@@ -16,10 +15,22 @@ function statusClasses(status: "online" | "down" | "unknown") {
       : "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
-function reportTypeClasses(type: "preventive" | "corrective") {
-  return type === "preventive"
-    ? "bg-blue-100 text-blue-800"
-    : "bg-yellow-100 text-yellow-800";
+function reportTypeClasses(type: "health_check" | "corrective" | "cfr") {
+  if (type === "health_check") {
+    return "bg-blue-100 text-blue-800";
+  }
+
+  if (type === "corrective") {
+    return "bg-yellow-100 text-yellow-800";
+  }
+
+  return "bg-purple-100 text-purple-800";
+}
+
+function reportTypeLabel(type: "health_check" | "corrective" | "cfr") {
+  if (type === "health_check") return "Health Check";
+  if (type === "corrective") return "Corrective";
+  return "CFR";
 }
 
 function formatFailureCode(code?: string) {
@@ -58,16 +69,18 @@ type DisplayTimelineItem =
     }
   | {
       kind: "linked";
-      preventive: MachineTimelineItem;
+      healthCheck: MachineTimelineItem;
       corrective: MachineTimelineItem;
       date: string;
     };
 
-function buildDisplayTimeline(
-  preventive: MachineTimelineItem[],
-  corrective: MachineTimelineItem[]
-): DisplayTimelineItem[] {
+function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem[] {
+  const healthChecks = items.filter((item) => item.reportCategory === "health_check");
+  const corrective = items.filter((item) => item.reportCategory === "corrective");
+  const cfr = items.filter((item) => item.reportCategory === "cfr");
+
   const correctiveBySourcePreventiveId = new Map<string, MachineTimelineItem>();
+  const correctiveById = new Map(corrective.map((item) => [item.id, item]));
   const linkedCorrectiveIds = new Set<string>();
 
   corrective.forEach((item) => {
@@ -78,26 +91,27 @@ function buildDisplayTimeline(
 
   const merged: DisplayTimelineItem[] = [];
 
-  preventive.forEach((preventiveItem) => {
+  healthChecks.forEach((healthCheckItem) => {
     const linkedCorrective =
-      preventiveItem.linkedCorrectiveDraftId
-        ? corrective.find((c) => c.id === preventiveItem.linkedCorrectiveDraftId)
-        : correctiveBySourcePreventiveId.get(preventiveItem.id);
+      (healthCheckItem.linkedCorrectiveDraftId
+        ? correctiveById.get(healthCheckItem.linkedCorrectiveDraftId)
+        : undefined) ||
+      correctiveBySourcePreventiveId.get(healthCheckItem.id);
 
     if (linkedCorrective) {
       linkedCorrectiveIds.add(linkedCorrective.id);
 
       merged.push({
         kind: "linked",
-        preventive: preventiveItem,
+        healthCheck: healthCheckItem,
         corrective: linkedCorrective,
-        date: linkedCorrective.date || preventiveItem.date,
+        date: linkedCorrective.date || healthCheckItem.date,
       });
     } else {
       merged.push({
         kind: "single",
-        item: preventiveItem,
-        date: preventiveItem.date,
+        item: healthCheckItem,
+        date: healthCheckItem.date,
       });
     }
   });
@@ -112,15 +126,48 @@ function buildDisplayTimeline(
     }
   });
 
-  return merged.sort((a, b) => b.date.localeCompare(a.date));
+  cfr.forEach((cfrItem) => {
+    merged.push({
+      kind: "single",
+      item: cfrItem,
+      date: cfrItem.date,
+    });
+  });
+
+  return merged.sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
+function getReportLink(item: MachineTimelineItem) {
+  if (item.reportCategory === "health_check") {
+    return `/reports/${item.id}`;
+  }
+
+  if (item.reportCategory === "corrective") {
+    return `/corrective-reports/${item.id}`;
+  }
+
+  return `/cfr-reports/${item.id}`;
+}
+
+function getReportLinkLabel(item: MachineTimelineItem) {
+  if (item.reportCategory === "health_check") {
+    return "Open health check";
+  }
+
+  if (item.reportCategory === "corrective") {
+    return "Open corrective";
+  }
+
+  return "Open CFR";
 }
 
 export function MachineDetailPage() {
   const { machineId } = useParams();
 
   const [machine, setMachine] = useState<OfficeMachineSummary | null>(null);
-  const [preventiveTimeline, setPreventiveTimeline] = useState<MachineTimelineItem[]>([]);
-  const [correctiveTimeline, setCorrectiveTimeline] = useState<MachineTimelineItem[]>([]);
+  const [timeline, setTimeline] = useState<MachineTimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -132,15 +179,13 @@ export function MachineDetailPage() {
         setLoading(true);
         setError("");
 
-        const [machineData, preventive, corrective] = await Promise.all([
+        const [machineData, timelineData] = await Promise.all([
           getMachineSummaryById(machineId),
-          getMachinePreventiveReports(machineId),
-          getMachineCorrectiveReports(machineId),
+          getMachineTimeline(machineId),
         ]);
 
         setMachine(machineData);
-        setPreventiveTimeline(preventive);
-        setCorrectiveTimeline(corrective);
+        setTimeline(timelineData);
       } catch (err) {
         console.error(err);
         setError("Failed to load machine.");
@@ -153,24 +198,29 @@ export function MachineDetailPage() {
   }, [machineId]);
 
   const displayTimeline = useMemo(() => {
-    return buildDisplayTimeline(preventiveTimeline, correctiveTimeline);
-  }, [preventiveTimeline, correctiveTimeline]);
+    return buildDisplayTimeline(timeline);
+  }, [timeline]);
 
   const recurringFailures = useMemo(() => {
     const failureMap = new Map<string, number>();
 
-    correctiveTimeline.forEach((item) => {
-      const key = buildRecurringFailureLabel(item);
-      if (!key) return;
+    timeline
+      .filter(
+        (item) =>
+          item.reportCategory === "corrective" || item.reportCategory === "cfr"
+      )
+      .forEach((item) => {
+        const key = buildRecurringFailureLabel(item);
+        if (!key) return;
 
-      failureMap.set(key, (failureMap.get(key) || 0) + 1);
-    });
+        failureMap.set(key, (failureMap.get(key) || 0) + 1);
+      });
 
     return Array.from(failureMap.entries())
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-  }, [correctiveTimeline]);
+  }, [timeline]);
 
   if (loading) {
     return (
@@ -228,7 +278,7 @@ export function MachineDetailPage() {
             <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
               <p className="text-xs font-medium text-slate-500">Reports</p>
               <p className="mt-1 text-sm text-slate-800">
-                Preventive: {machine.preventiveReportCount} · Corrective: {machine.correctiveDraftCount}
+                Health Checks: {machine.preventiveReportCount} · Corrective: {machine.correctiveDraftCount} · CFR: {machine.cfrDraftCount}
               </p>
             </div>
           </div>
@@ -244,12 +294,12 @@ export function MachineDetailPage() {
               {displayTimeline.length > 0 ? (
                 displayTimeline.map((entry) => {
                   if (entry.kind === "linked") {
-                    const preventive = entry.preventive;
+                    const healthCheck = entry.healthCheck;
                     const corrective = entry.corrective;
 
                     return (
                       <div
-                        key={`linked-${preventive.id}-${corrective.id}`}
+                        key={`linked-${healthCheck.id}-${corrective.id}`}
                         className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -264,14 +314,14 @@ export function MachineDetailPage() {
 
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full px-2.5 py-1 text-xs font-medium bg-yellow-100 text-yellow-800">
-                              corrective
+                              Corrective
                             </span>
                             <span
                               className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
-                                "down"
+                                corrective.status
                               )}`}
                             >
-                              down
+                              {corrective.status}
                             </span>
                           </div>
                         </div>
@@ -313,7 +363,7 @@ export function MachineDetailPage() {
                           </Link>
 
                           <Link
-                            to={`/reports/${preventive.id}`}
+                            to={`/reports/${healthCheck.id}`}
                             className="rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
                           >
                             Open health check
@@ -327,7 +377,7 @@ export function MachineDetailPage() {
 
                   return (
                     <div
-                      key={`${item.type}-${item.id}`}
+                      key={`${item.reportCategory}-${item.id}`}
                       className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -343,10 +393,10 @@ export function MachineDetailPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportTypeClasses(
-                              item.type
+                              item.reportCategory
                             )}`}
                           >
-                            {item.type}
+                            {reportTypeLabel(item.reportCategory)}
                           </span>
 
                           <span
@@ -361,7 +411,7 @@ export function MachineDetailPage() {
 
                       <p className="mt-3 text-sm text-slate-600">{item.summary}</p>
 
-                      {item.type === "corrective" &&
+                      {(item.reportCategory === "corrective" || item.reportCategory === "cfr") &&
                       (item.failureCode || item.failureComponent || item.failureMode) ? (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {item.failureCode ? (
@@ -386,14 +436,10 @@ export function MachineDetailPage() {
 
                       <div className="mt-4">
                         <Link
-                          to={
-                            item.type === "preventive"
-                              ? `/reports/${item.id}`
-                              : `/corrective-reports/${item.id}`
-                          }
+                          to={getReportLink(item)}
                           className="inline-flex rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
                         >
-                          Open {item.type === "preventive" ? "health check" : "corrective"}
+                          {getReportLinkLabel(item)}
                         </Link>
                       </div>
                     </div>

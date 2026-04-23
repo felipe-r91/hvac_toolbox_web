@@ -17,13 +17,17 @@ function statusClasses(status: "online" | "down" | "unknown") {
   return "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
-function reportTypeClasses(type?: "preventive" | "corrective") {
-  if (type === "preventive") {
+function reportTypeClasses(type?: "health_check" | "corrective" | "cfr") {
+  if (type === "health_check") {
     return "bg-blue-100 text-blue-800";
   }
 
   if (type === "corrective") {
     return "bg-yellow-100 text-yellow-800";
+  }
+
+  if (type === "cfr") {
+    return "bg-purple-100 text-purple-800";
   }
 
   return "bg-slate-100 text-slate-600";
@@ -88,7 +92,7 @@ export function VesselDetailPage() {
     ).length;
 
     const preventiveDueSoon = vesselMachines.filter((m) => {
-      if (!m.latestReportDate || m.latestReportType !== "preventive") {
+      if (!m.latestReportDate || m.latestReportType !== "health_check") {
         return true;
       }
 

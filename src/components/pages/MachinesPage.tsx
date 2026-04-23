@@ -15,8 +15,8 @@ function statusClasses(status: "online" | "down" | "unknown") {
   return "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
-function reportTypeClasses(type?: "preventive" | "corrective") {
-  if (type === "preventive") {
+function reportTypeClasses(type?: "health_check" | "corrective" | "cfr") {
+  if (type === "health_check") {
     return "bg-blue-100 text-blue-800";
   }
 
@@ -24,7 +24,18 @@ function reportTypeClasses(type?: "preventive" | "corrective") {
     return "bg-yellow-100 text-yellow-800";
   }
 
+  if (type === "cfr") {
+    return "bg-purple-100 text-purple-800";
+  }
+
   return "bg-slate-100 text-slate-600";
+}
+
+function reportTypeLabel(type?: "health_check" | "corrective" | "cfr") {
+  if (type === "health_check") return "Health Check";
+  if (type === "corrective") return "Corrective";
+  if (type === "cfr") return "CFR";
+  return "—";
 }
 
 export function MachinesPage() {
@@ -169,8 +180,9 @@ export function MachinesPage() {
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
             >
               <option value="all">All report types</option>
-              <option value="preventive">Preventive</option>
+              <option value="health_check">Health Check</option>
               <option value="corrective">Corrective</option>
+              <option value="cfr">CFR</option>
             </select>
           </label>
         </div>
@@ -262,7 +274,7 @@ export function MachinesPage() {
                             machine.latestReportType
                           )}`}
                         >
-                          {machine.latestReportType ?? "—"}
+                          {reportTypeLabel(machine.latestReportType)}
                         </span>
                       </div>
                     </td>

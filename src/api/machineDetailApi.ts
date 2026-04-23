@@ -5,7 +5,8 @@ const API_BASE_URL =
 
 export type MachineTimelineItem = {
   id: string;
-  type: "preventive" | "corrective";
+  type: "preventive" | "corrective" | "cfr";
+  reportCategory: "health_check" | "corrective" | "cfr";
   date: string;
   status: "online" | "down" | "unknown";
   title: string;
@@ -13,7 +14,6 @@ export type MachineTimelineItem = {
   failureComponent?: string;
   failureMode?: string;
   failureCode?: string;
-
   linkedCorrectiveDraftId?: string;
   sourcePreventiveReportId?: string;
 };
@@ -31,27 +31,14 @@ export async function getMachineSummaryById(
   return response.json();
 }
 
-export async function getMachinePreventiveReports(
+export async function getMachineTimeline(
   machineId: string
 ): Promise<MachineTimelineItem[]> {
-  const response = await fetch(`${API_BASE_URL}/api/reports/machines/${machineId}/preventive`);
+  const response = await fetch(`${API_BASE_URL}/api/reports/machines/${machineId}/timeline`);
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Failed to load preventive reports for machine ${machineId}: ${text}`);
-  }
-
-  return response.json();
-}
-
-export async function getMachineCorrectiveReports(
-  machineId: string
-): Promise<MachineTimelineItem[]> {
-  const response = await fetch(`${API_BASE_URL}/api/reports/machines/${machineId}/corrective`);
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Failed to load corrective reports for machine ${machineId}: ${text}`);
+    throw new Error(`Failed to load timeline for machine ${machineId}: ${text}`);
   }
 
   return response.json();

@@ -63,16 +63,16 @@ function buildRecurringFailureLabel(item: MachineTimelineItem) {
 
 type DisplayTimelineItem =
   | {
-      kind: "single";
-      item: MachineTimelineItem;
-      date: string;
-    }
+    kind: "single";
+    item: MachineTimelineItem;
+    date: string;
+  }
   | {
-      kind: "linked";
-      healthCheck: MachineTimelineItem;
-      corrective: MachineTimelineItem;
-      date: string;
-    };
+    kind: "linked";
+    healthCheck: MachineTimelineItem;
+    corrective: MachineTimelineItem;
+    date: string;
+  };
 
 function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem[] {
   const healthChecks = items.filter((item) => item.reportCategory === "health_check");
@@ -285,12 +285,14 @@ export function MachineDetailPage() {
         </div>
       </section>
 
-      <section className="min-h-0 flex-1 overflow-auto">
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-2">
-            <h2 className="text-lg font-semibold text-slate-900">Reports timeline</h2>
+      <section className="min-h-0 flex-1 overflow-hidden">
+        <div className="grid h-full grid-cols-1 gap-6 xl:grid-cols-3">
+          <section className="flex min-h-0 flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-2">
+            <h2 className="shrink-0 text-lg font-semibold text-slate-900">
+              Reports timeline
+            </h2>
 
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {displayTimeline.length > 0 ? (
                 displayTimeline.map((entry) => {
                   if (entry.kind === "linked") {
@@ -412,7 +414,7 @@ export function MachineDetailPage() {
                       <p className="mt-3 text-sm text-slate-600">{item.summary}</p>
 
                       {(item.reportCategory === "corrective" || item.reportCategory === "cfr") &&
-                      (item.failureCode || item.failureComponent || item.failureMode) ? (
+                        (item.failureCode || item.failureComponent || item.failureMode) ? (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {item.failureCode ? (
                             <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
@@ -453,7 +455,7 @@ export function MachineDetailPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <section className="h-fit rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <h2 className="text-lg font-semibold text-slate-900">Recurring failures</h2>
 
             <div className="mt-4 space-y-3">

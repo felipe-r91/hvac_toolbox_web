@@ -64,7 +64,9 @@ export type PreventiveTaskDetail = {
 
 export type PreventiveReportDetail = {
   id: string;
+  vesselId: string;
   vesselName: string;
+  machineId: string;
   machineTag: string;
   machineModel: string;
   machineType: string;
@@ -86,7 +88,9 @@ export type PreventiveReportDetail = {
 
 export type CorrectiveReportDetail = {
   id: string;
+  vesselId: string;
   vesselName: string;
+  machineId: string;
   machineTag: string;
   machineModel: string;
   machineType: string;

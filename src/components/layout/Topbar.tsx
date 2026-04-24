@@ -2,6 +2,11 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getVesselById } from "../../api/vesselsApi";
 import { getMachineSummaryById } from "../../api/machineDetailApi";
+import {
+  getCfrReportById,
+  getCorrectiveReportById,
+  getHealthCheckReportById,
+} from "../../api/reportDetailApi";
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -22,12 +27,36 @@ type MachineBreadcrumbData = {
   machineTag: string;
 };
 
+type ReportBreadcrumbData = {
+  vesselId: string;
+  vesselName: string;
+  machineId: string;
+  machineTag: string;
+  reportLabel: string;
+};
+
+function UserBadge() {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
+        Technician / Manager
+      </div>
+    </div>
+  );
+}
+
 export function Topbar() {
   const location = useLocation();
   const { machineId, vesselId } = useParams();
 
   const [vesselData, setVesselData] = useState<VesselBreadcrumbData | null>(null);
   const [machineData, setMachineData] = useState<MachineBreadcrumbData | null>(null);
+  const [reportData, setReportData] = useState<ReportBreadcrumbData | null>(null);
+
+  const isReportRoute =
+    location.pathname.startsWith("/reports/") ||
+    location.pathname.startsWith("/corrective-reports/") ||
+    location.pathname.startsWith("/cfr-reports/");
 
   useEffect(() => {
     let cancelled = false;
@@ -48,9 +77,7 @@ export function Topbar() {
         }
       } catch (error) {
         console.error(error);
-        if (!cancelled) {
-          setVesselData(null);
-        }
+        if (!cancelled) setVesselData(null);
       }
     };
 
@@ -82,9 +109,7 @@ export function Topbar() {
         }
       } catch (error) {
         console.error(error);
-        if (!cancelled) {
-          setMachineData(null);
-        }
+        if (!cancelled) setMachineData(null);
       }
     };
 
@@ -94,6 +119,129 @@ export function Topbar() {
       cancelled = true;
     };
   }, [location.pathname, machineId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadReport = async () => {
+      const parts = location.pathname.split("/").filter(Boolean);
+      const route = parts[0];
+      const reportId = parts[1];
+
+      const isReportDetailRoute =
+        route === "reports" ||
+        route === "corrective-reports" ||
+        route === "cfr-reports";
+
+      if (!isReportDetailRoute || !reportId) {
+        setReportData(null);
+        return;
+      }
+
+      try {
+        if (route === "reports") {
+          const report = await getHealthCheckReportById(reportId);
+
+          if (!cancelled) {
+            setReportData({
+              vesselId: report.vesselId,
+              vesselName: report.vesselName,
+              machineId: report.machineId,
+              machineTag: report.machineTag,
+              reportLabel: "Health Check Report",
+            });
+          }
+
+          return;
+        }
+
+        if (route === "corrective-reports") {
+          const report = await getCorrectiveReportById(reportId);
+
+          if (!cancelled) {
+            setReportData({
+              vesselId: report.vesselId,
+              vesselName: report.vesselName,
+              machineId: report.machineId,
+              machineTag: report.machineTag,
+              reportLabel: "Corrective Report",
+            });
+          }
+
+          return;
+        }
+
+        if (route === "cfr-reports") {
+          const report = await getCfrReportById(reportId);
+
+          if (!cancelled) {
+            setReportData({
+              vesselId: report.vesselId,
+              vesselName: report.vesselName,
+              machineId: report.machineId,
+              machineTag: report.machineTag,
+              reportLabel: "CFR Report",
+            });
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) setReportData(null);
+      }
+    };
+
+    loadReport();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
+
+  if (isReportRoute) {
+    return (
+      <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
+        <div className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <Link to="/machines" className="text-slate-600 hover:text-slate-900">
+            Machines
+          </Link>
+
+          <span className="text-slate-400">/</span>
+
+          {reportData ? (
+            <Link
+              to={`/vessels/${reportData.vesselId}`}
+              className="text-slate-600 hover:text-slate-900"
+            >
+              {reportData.vesselName}
+            </Link>
+          ) : (
+            <span className="text-slate-400">Loading...</span>
+          )}
+
+          <span className="text-slate-400">/</span>
+
+          {reportData ? (
+            <Link
+              to={`/machines/${reportData.machineId}`}
+              className="text-slate-600 hover:text-slate-900"
+            >
+              {reportData.machineTag}
+            </Link>
+          ) : (
+            <span className="text-slate-400">Loading...</span>
+          )}
+
+          <span className="text-slate-400">/</span>
+
+          <span className="text-slate-900">
+            {reportData?.reportLabel || "Report"}
+          </span>
+        </div>
+
+        <UserBadge />
+      </header>
+    );
+  }
 
   if (location.pathname.startsWith("/machines/") && machineId) {
     return (
@@ -123,11 +271,7 @@ export function Topbar() {
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
-            Technician / Manager
-          </div>
-        </div>
+        <UserBadge />
       </header>
     );
   }
@@ -147,11 +291,7 @@ export function Topbar() {
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
-            Technician / Manager
-          </div>
-        </div>
+        <UserBadge />
       </header>
     );
   }
@@ -160,15 +300,8 @@ export function Topbar() {
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
-          Technician / Manager
-        </div>
-      </div>
+      <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+      <UserBadge />
     </header>
   );
 }

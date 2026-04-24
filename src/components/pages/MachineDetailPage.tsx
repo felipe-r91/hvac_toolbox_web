@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   getMachineSummaryById,
@@ -172,6 +172,9 @@ export function MachineDetailPage() {
   const [error, setError] = useState("");
   const [dateSortDirection, setDateSortDirection] = useState<"desc" | "asc">("desc");
   const [typeFilter, setTypeFilter] = useState<"all" | "health_check" | "corrective" | "cfr">("all");
+  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
+
+  const typeMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!machineId) return;
@@ -198,6 +201,20 @@ export function MachineDetailPage() {
 
     run();
   }, [machineId]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        typeMenuRef.current &&
+        !typeMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsTypeMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const displayTimeline = useMemo(() => {
     const filteredTimeline =
@@ -350,52 +367,75 @@ export function MachineDetailPage() {
                       Date {dateSortDirection === "desc" ? "↓" : "↑"}
                     </th>
 
-                    <th className="group relative px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:bg-slate-100">
-                      <div className="flex cursor-default items-center gap-2">
-                        Type
-                        {typeFilter !== "all" ? (
+                    <th className="relative px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <div ref={typeMenuRef} className="relative inline-flex items-center gap-2">
+
+                        <button
+                          type="button"
+                          onClick={() => setIsTypeMenuOpen((prev) => !prev)}
+                          className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-100"
+                        >
+                          <span>Type</span>
+
+                          <span className="text-[10px] text-slate-400">
+                            {isTypeMenuOpen ? "▲" : "▼"}
+                          </span>
+                        </button>
+
+                        {typeFilter !== "all" && (
                           <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-700">
                             filtered
                           </span>
-                        ) : null}
-                      </div>
+                        )}
 
-                      <div className="invisible absolute left-4 top-full z-30 mt-2 w-44 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-slate-200 group-hover:visible">
-                        <button
-                          type="button"
-                          onClick={() => setTypeFilter("all")}
-                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
-                        >
-                          <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
-                          All types
-                        </button>
+                        {isTypeMenuOpen && (
+                          <div className="absolute left-full top-0 z-30 ml-2 w-44 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-slate-200">
 
-                        <button
-                          type="button"
-                          onClick={() => setTypeFilter("health_check")}
-                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
-                        >
-                          <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                          Health Check
-                        </button>
+                            <button
+                              onClick={() => {
+                                setTypeFilter("all");
+                                setIsTypeMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                            >
+                              <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
+                              All types
+                            </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setTypeFilter("corrective")}
-                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
-                        >
-                          <span className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
-                          Corrective
-                        </button>
+                            <button
+                              onClick={() => {
+                                setTypeFilter("health_check");
+                                setIsTypeMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                            >
+                              <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                              Health Check
+                            </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setTypeFilter("cfr")}
-                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
-                        >
-                          <span className="h-2.5 w-2.5 rounded-full bg-purple-500" />
-                          CFR
-                        </button>
+                            <button
+                              onClick={() => {
+                                setTypeFilter("corrective");
+                                setIsTypeMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                            >
+                              <span className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
+                              Corrective
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setTypeFilter("cfr");
+                                setIsTypeMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                            >
+                              <span className="h-2.5 w-2.5 rounded-full bg-purple-500" />
+                              CFR
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </th>
 

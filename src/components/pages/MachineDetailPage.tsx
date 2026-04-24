@@ -292,166 +292,142 @@ export function MachineDetailPage() {
               Reports timeline
             </h2>
 
-            <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {displayTimeline.length > 0 ? (
-                displayTimeline.map((entry) => {
-                  if (entry.kind === "linked") {
-                    const healthCheck = entry.healthCheck;
-                    const corrective = entry.corrective;
+            <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-2xl ring-1 ring-slate-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <table className="min-w-full border-collapse">
+                <thead className="sticky top-0 z-10 bg-slate-50">
+                  <tr className="text-left">
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Type
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Summary
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Failure
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
 
-                    return (
-                      <div
-                        key={`linked-${healthCheck.id}-${corrective.id}`}
-                        className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <h3 className="text-sm font-semibold text-slate-900">
-                              Corrective Maintenance
-                            </h3>
-                            <p className="mt-1 text-xs text-slate-500">
-                              {new Date(entry.date).toLocaleString()}
-                            </p>
-                          </div>
+                <tbody>
+                  {displayTimeline.length > 0 ? (
+                    displayTimeline.map((entry) => {
+                      const item =
+                        entry.kind === "linked" ? entry.corrective : entry.item;
 
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full px-2.5 py-1 text-xs font-medium bg-yellow-100 text-yellow-800">
-                              Corrective
-                            </span>
+                      const linkedHealthCheck =
+                        entry.kind === "linked" ? entry.healthCheck : null;
+
+                      const failureLabel = buildRecurringFailureLabel(item);
+
+                      return (
+                        <tr
+                          key={
+                            entry.kind === "linked"
+                              ? `linked-${entry.healthCheck.id}-${entry.corrective.id}`
+                              : `${item.reportCategory}-${item.id}`
+                          }
+                          className="border-t border-slate-200 hover:bg-slate-50"
+                        >
+                          <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
+                            {new Date(entry.date).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <div className="flex flex-col items-start gap-1">
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportTypeClasses(
+                                  item.reportCategory
+                                )}`}
+                              >
+                                {reportTypeLabel(item.reportCategory)}
+                              </span>
+
+                              {linkedHealthCheck ? (
+                                <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
+                                  Linked Health Check
+                                </span>
+                              ) : null}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-4">
                             <span
                               className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
-                                corrective.status
+                                item.status
                               )}`}
                             >
-                              {corrective.status}
+                              {item.status}
                             </span>
-                          </div>
-                        </div>
+                          </td>
 
-                        <p className="mt-3 text-sm text-slate-600">
-                          {corrective.summary}
-                        </p>
+                          <td className="max-w-md px-4 py-4 text-sm text-slate-700">
+                            <div className="font-medium text-slate-900">{item.title}</div>
+                            <div className="mt-1 line-clamp-2 text-slate-500">
+                              {item.summary || "—"}
+                            </div>
+                          </td>
 
-                        {(corrective.failureCode ||
-                          corrective.failureComponent ||
-                          corrective.failureMode) ? (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {corrective.failureCode ? (
-                              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
-                                {formatFailureCode(corrective.failureCode)}
-                              </span>
-                            ) : null}
+                          <td className="px-4 py-4 text-sm text-slate-700">
+                            {failureLabel ? (
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium text-slate-900">
+                                  {failureLabel}
+                                </span>
 
-                            {corrective.failureComponent ? (
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                {corrective.failureComponent}
-                              </span>
-                            ) : null}
+                                <span className="text-xs text-slate-500">
+                                  {[item.failureComponent, item.failureMode]
+                                    .filter(Boolean)
+                                    .join(" · ") || "—"}
+                                </span>
+                              </div>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
 
-                            {corrective.failureMode ? (
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                {corrective.failureMode}
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : null}
+                          <td className="px-4 py-4">
+                            <div className="flex flex-col gap-2">
+                              <Link
+                                to={getReportLink(item)}
+                                className="w-fit rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+                              >
+                                {getReportLinkLabel(item)}
+                              </Link>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <Link
-                            to={`/corrective-reports/${corrective.id}`}
-                            className="rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
-                          >
-                            Open corrective
-                          </Link>
-
-                          <Link
-                            to={`/reports/${healthCheck.id}`}
-                            className="rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
-                          >
-                            Open health check
-                          </Link>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  const item = entry.item;
-
-                  return (
-                    <div
-                      key={`${item.reportCategory}-${item.id}`}
-                      className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-sm font-semibold text-slate-900">
-                            {item.title}
-                          </h3>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {new Date(item.date).toLocaleString()}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportTypeClasses(
-                              item.reportCategory
-                            )}`}
-                          >
-                            {reportTypeLabel(item.reportCategory)}
-                          </span>
-
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
-                              item.status
-                            )}`}
-                          >
-                            {item.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="mt-3 text-sm text-slate-600">{item.summary}</p>
-
-                      {(item.reportCategory === "corrective" || item.reportCategory === "cfr") &&
-                        (item.failureCode || item.failureComponent || item.failureMode) ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {item.failureCode ? (
-                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
-                              {formatFailureCode(item.failureCode)}
-                            </span>
-                          ) : null}
-
-                          {item.failureComponent ? (
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                              {item.failureComponent}
-                            </span>
-                          ) : null}
-
-                          {item.failureMode ? (
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                              {item.failureMode}
-                            </span>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      <div className="mt-4">
-                        <Link
-                          to={getReportLink(item)}
-                          className="inline-flex rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300"
-                        >
-                          {getReportLinkLabel(item)}
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 ring-1 ring-slate-200">
-                  No report history found.
-                </div>
-              )}
+                              {linkedHealthCheck ? (
+                                <Link
+                                  to={`/reports/${linkedHealthCheck.id}`}
+                                  className="w-fit rounded-2xl bg-white px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+                                >
+                                  Open health check
+                                </Link>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-4 py-10 text-center text-sm text-slate-500"
+                      >
+                        No report history found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </section>
 

@@ -173,6 +173,7 @@ export function MachineDetailPage() {
   const [dateSortDirection, setDateSortDirection] = useState<"desc" | "asc">("desc");
   const [typeFilter, setTypeFilter] = useState<"all" | "health_check" | "corrective" | "cfr">("all");
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
+  const [failureFilter, setFailureFilter] = useState<string | null>(null);
 
   const typeMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -217,10 +218,19 @@ export function MachineDetailPage() {
   }, []);
 
   const displayTimeline = useMemo(() => {
-    const filteredTimeline =
-      typeFilter === "all"
-        ? timeline
-        : timeline.filter((item) => item.reportCategory === typeFilter);
+    let filteredTimeline = timeline;
+
+    if (typeFilter !== "all") {
+      filteredTimeline = filteredTimeline.filter(
+        (item) => item.reportCategory === typeFilter
+      );
+    }
+
+    if (failureFilter) {
+      filteredTimeline = filteredTimeline.filter(
+        (item) => buildRecurringFailureLabel(item) === failureFilter
+      );
+    }
 
     const builtTimeline = buildDisplayTimeline(filteredTimeline);
 
@@ -230,10 +240,10 @@ export function MachineDetailPage() {
 
       return dateSortDirection === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [timeline, typeFilter, dateSortDirection]);
+  }, [timeline, typeFilter, failureFilter, dateSortDirection]);
 
   const recurringFailures = useMemo(() => {
-    const failureMap = new Map<string, number>();
+    const failureMap = new Map<string, { label: string; count: number }>();
 
     timeline
       .filter(
@@ -241,14 +251,16 @@ export function MachineDetailPage() {
           item.reportCategory === "corrective" || item.reportCategory === "cfr"
       )
       .forEach((item) => {
-        const key = buildRecurringFailureLabel(item);
-        if (!key) return;
+        const label = buildRecurringFailureLabel(item);
+        if (!label) return;
 
-        failureMap.set(key, (failureMap.get(key) || 0) + 1);
+        failureMap.set(label, {
+          label,
+          count: (failureMap.get(label)?.count || 0) + 1,
+        });
       });
 
-    return Array.from(failureMap.entries())
-      .map(([label, count]) => ({ label, count }))
+    return Array.from(failureMap.values())
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
   }, [timeline]);
@@ -322,20 +334,33 @@ export function MachineDetailPage() {
 
               <div className="mt-3 max-h-40 space-y-2 overflow-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {recurringFailures.length > 0 ? (
-                  recurringFailures.map((failure) => (
-                    <div
-                      key={failure.label}
-                      className="flex items-center justify-between rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200"
-                    >
-                      <div className="text-xs text-slate-700">
-                        {failure.label}
-                      </div>
+                  recurringFailures.map((failure) => {
+                    const selected = failureFilter === failure.label;
 
-                      <div className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">
-                        {failure.count}x
-                      </div>
-                    </div>
-                  ))
+                    return (
+                      <button
+                        key={failure.label}
+                        type="button"
+                        onClick={() =>
+                          setFailureFilter((current) =>
+                            current === failure.label ? null : failure.label
+                          )
+                        }
+                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left ring-1 transition ${selected
+                            ? "bg-red-50 ring-red-200"
+                            : "bg-white ring-slate-200 hover:bg-slate-50"
+                          }`}
+                      >
+                        <div className="text-xs text-slate-700">
+                          {failure.label}
+                        </div>
+
+                        <div className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">
+                          {failure.count}x
+                        </div>
+                      </button>
+                    );
+                  })
                 ) : (
                   <div className="text-xs text-slate-500">
                     No recurring failures
@@ -571,15 +596,29 @@ export function MachineDetailPage() {
                 </tbody>
               </table>
             </div>
-            {typeFilter !== "all" ? (
-              <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-                Showing only {reportTypeLabel(typeFilter)} reports.
+            {(typeFilter !== "all" || failureFilter) ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                {typeFilter !== "all" ? (
+                  <span>
+                    Type: <strong>{reportTypeLabel(typeFilter)}</strong>
+                  </span>
+                ) : null}
+
+                {failureFilter ? (
+                  <span>
+                    Failure: <strong>{failureFilter}</strong>
+                  </span>
+                ) : null}
+
                 <button
                   type="button"
-                  onClick={() => setTypeFilter("all")}
+                  onClick={() => {
+                    setTypeFilter("all");
+                    setFailureFilter(null);
+                  }}
                   className="font-medium text-slate-900 underline"
                 >
-                  Clear filter
+                  Clear filters
                 </button>
               </div>
             ) : null}

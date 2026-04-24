@@ -8,6 +8,9 @@ import { CFRCenterPage } from "../components/pages/CFRCenterPage";
 import { InsightsPage } from "../components/pages/InsightsPage";
 import { MachineDetailPage } from "../components/pages/MachineDetailPage";
 import { VesselDetailPage } from "../components/pages/VesselDetailPage";
+import { CfrReportDetailPage } from "../components/pages/CfrReportDetailPage";
+import { CorrectiveReportDetailPage } from "../components/pages/CorrectiveReportDetailPage";
+import { HealthCheckReportDetailPage } from "../components/pages/HealthCheckReportDetailPage";
 
 export function AppRouter() {
   return (
@@ -24,6 +27,9 @@ export function AppRouter() {
           <Route path="/insights" element={<InsightsPage />} />
           <Route path="/machines/:machineId" element={<MachineDetailPage />} />
           <Route path="/vessels/:vesselId" element={<VesselDetailPage />} />
+          <Route path="/reports/:reportId" element={<HealthCheckReportDetailPage />} />
+          <Route path="/corrective-reports/:reportId" element={<CorrectiveReportDetailPage />} />
+          <Route path="/cfr-reports/:reportId" element={<CfrReportDetailPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

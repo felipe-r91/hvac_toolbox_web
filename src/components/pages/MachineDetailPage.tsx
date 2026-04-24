@@ -289,7 +289,7 @@ export function MachineDetailPage() {
               Recurring failures
             </h2>
 
-            <div className="mt-3 max-h-40 space-y-2 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="mt-3 max-h-40 space-y-2 overflow-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {recurringFailures.length > 0 ? (
                 recurringFailures.map((failure) => (
                   <div
@@ -316,7 +316,7 @@ export function MachineDetailPage() {
       </div>
     </section>
 
-    <section className="min-h-0 flex-1 overflow-hidden">
+    <section className="min-h-0 flex-1 overflow-hidden p-4">
       <div className="grid h-full grid-cols-1 gap-6">
         <section className="flex min-h-0 flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <h2 className="shrink-0 text-lg font-semibold text-slate-900">

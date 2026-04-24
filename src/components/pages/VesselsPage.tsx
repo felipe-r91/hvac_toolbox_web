@@ -47,7 +47,7 @@ export function VesselsPage() {
     <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col">
       <section className="min-h-0 flex-1 overflow-auto">
         {vessels.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 p-4">
             {vessels.map((vessel) => {
               const totalMachines = vessel.machines.length;
 

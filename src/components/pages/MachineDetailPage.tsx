@@ -170,6 +170,8 @@ export function MachineDetailPage() {
   const [timeline, setTimeline] = useState<MachineTimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dateSortDirection, setDateSortDirection] = useState<"desc" | "asc">("desc");
+  const [typeFilter, setTypeFilter] = useState<"all" | "health_check" | "corrective" | "cfr">("all");
 
   useEffect(() => {
     if (!machineId) return;
@@ -198,8 +200,20 @@ export function MachineDetailPage() {
   }, [machineId]);
 
   const displayTimeline = useMemo(() => {
-    return buildDisplayTimeline(timeline);
-  }, [timeline]);
+    const filteredTimeline =
+      typeFilter === "all"
+        ? timeline
+        : timeline.filter((item) => item.reportCategory === typeFilter);
+
+    const builtTimeline = buildDisplayTimeline(filteredTimeline);
+
+    return [...builtTimeline].sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+
+      return dateSortDirection === "desc" ? dateB - dateA : dateA - dateB;
+    });
+  }, [timeline, typeFilter, dateSortDirection]);
 
   const recurringFailures = useMemo(() => {
     const failureMap = new Map<string, number>();
@@ -239,232 +253,299 @@ export function MachineDetailPage() {
   }
 
   return (
-  <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
-    <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {machine.machineTag}
-          </h1>
+    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex-1">
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {machine.machineTag}
+            </h1>
 
-          <p className="mt-2 text-sm text-slate-500">
-            {machine.vesselName} · {machine.model} · {machine.starterType} ·{" "}
-            {machine.type}
-          </p>
+            <p className="mt-2 text-sm text-slate-500">
+              {machine.vesselName} · {machine.model} · {machine.starterType} ·{" "}
+              {machine.type}
+            </p>
 
-          <p className="mt-1 text-sm text-slate-500">
-            Location: {machine.location}
-          </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Location: {machine.location}
+            </p>
 
-          <p className="mt-1 text-sm text-slate-500">
-            Serial Number: {machine.serialNumber}
-          </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Serial Number: {machine.serialNumber}
+            </p>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${statusClasses(
-                machine.latestKnownStatus || "unknown"
-              )}`}
-            >
-              {machine.latestKnownStatus || "unknown"}
-            </span>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${statusClasses(
+                  machine.latestKnownStatus || "unknown"
+                )}`}
+              >
+                {machine.latestKnownStatus || "unknown"}
+              </span>
 
-            <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
-              Last:{" "}
-              {machine.latestReportDate
-                ? new Date(machine.latestReportDate).toLocaleString()
-                : "—"}
+              <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
+                Last:{" "}
+                {machine.latestReportDate
+                  ? new Date(machine.latestReportDate).toLocaleString()
+                  : "—"}
+              </div>
+
+              <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
+                HC: {machine.preventiveReportCount} · COR:{" "}
+                {machine.correctiveDraftCount} · CFR: {machine.cfrDraftCount}
+              </div>
             </div>
+          </div>
 
-            <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
-              HC: {machine.preventiveReportCount} · COR:{" "}
-              {machine.correctiveDraftCount} · CFR: {machine.cfrDraftCount}
+          <div className="w-full max-w-sm">
+            <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <h2 className="text-sm font-semibold text-slate-900">
+                Recurring failures
+              </h2>
+
+              <div className="mt-3 max-h-40 space-y-2 overflow-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {recurringFailures.length > 0 ? (
+                  recurringFailures.map((failure) => (
+                    <div
+                      key={failure.label}
+                      className="flex items-center justify-between rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200"
+                    >
+                      <div className="text-xs text-slate-700">
+                        {failure.label}
+                      </div>
+
+                      <div className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">
+                        {failure.count}x
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-slate-500">
+                    No recurring failures
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
+      </section>
 
-        <div className="w-full max-w-sm">
-          <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Recurring failures
+      <section className="min-h-0 flex-1 overflow-hidden p-4">
+        <div className="grid h-full grid-cols-1 gap-6">
+          <section className="flex min-h-0 flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <h2 className="shrink-0 text-lg font-semibold text-slate-900">
+              Reports timeline
             </h2>
 
-            <div className="mt-3 max-h-40 space-y-2 overflow-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {recurringFailures.length > 0 ? (
-                recurringFailures.map((failure) => (
-                  <div
-                    key={failure.label}
-                    className="flex items-center justify-between rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200"
-                  >
-                    <div className="text-xs text-slate-700">
-                      {failure.label}
-                    </div>
+            <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-2xl ring-1 ring-slate-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <table className="min-w-full border-collapse">
+                <thead className="sticky top-0 z-10 bg-slate-50">
+                  <tr className="text-left">
+                    <th
+                      onClick={() =>
+                        setDateSortDirection((current) => (current === "desc" ? "asc" : "desc"))
+                      }
+                      className="cursor-pointer px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:bg-slate-100"
+                    >
+                      Date {dateSortDirection === "desc" ? "↓" : "↑"}
+                    </th>
 
-                    <div className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">
-                      {failure.count}x
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-xs text-slate-500">
-                  No recurring failures
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+                    <th className="group relative px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:bg-slate-100">
+                      <div className="flex cursor-default items-center gap-2">
+                        Type
+                        {typeFilter !== "all" ? (
+                          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-700">
+                            filtered
+                          </span>
+                        ) : null}
+                      </div>
 
-    <section className="min-h-0 flex-1 overflow-hidden p-4">
-      <div className="grid h-full grid-cols-1 gap-6">
-        <section className="flex min-h-0 flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <h2 className="shrink-0 text-lg font-semibold text-slate-900">
-            Reports timeline
-          </h2>
+                      <div className="invisible absolute left-4 top-full z-30 mt-2 w-44 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-slate-200 group-hover:visible">
+                        <button
+                          type="button"
+                          onClick={() => setTypeFilter("all")}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
+                          All types
+                        </button>
 
-          <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-2xl ring-1 ring-slate-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <table className="min-w-full border-collapse">
-              <thead className="sticky top-0 z-10 bg-slate-50">
-                <tr className="text-left">
-                  <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Date
-                  </th>
-                  <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Type
-                  </th>
-                  <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Status
-                  </th>
-                  <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Summary
-                  </th>
-                  <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Failure
-                  </th>
-                  <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Action
-                  </th>
-                </tr>
-              </thead>
+                        <button
+                          type="button"
+                          onClick={() => setTypeFilter("health_check")}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                          Health Check
+                        </button>
 
-              <tbody>
-                {displayTimeline.length > 0 ? (
-                  displayTimeline.map((entry) => {
-                    const item =
-                      entry.kind === "linked" ? entry.corrective : entry.item;
+                        <button
+                          type="button"
+                          onClick={() => setTypeFilter("corrective")}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          <span className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
+                          Corrective
+                        </button>
 
-                    const linkedHealthCheck =
-                      entry.kind === "linked" ? entry.healthCheck : null;
+                        <button
+                          type="button"
+                          onClick={() => setTypeFilter("cfr")}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          <span className="h-2.5 w-2.5 rounded-full bg-purple-500" />
+                          CFR
+                        </button>
+                      </div>
+                    </th>
 
-                    const failureLabel = buildRecurringFailureLabel(item);
+                    <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Status
+                    </th>
 
-                    return (
-                      <tr
-                        key={
-                          entry.kind === "linked"
-                            ? `linked-${entry.healthCheck.id}-${entry.corrective.id}`
-                            : `${item.reportCategory}-${item.id}`
-                        }
-                        className="border-t border-slate-200 hover:bg-slate-50"
-                      >
-                        <td className="whitespace-nowrap px-4 py-2 text-sm text-slate-700">
-                          {new Date(entry.date).toLocaleString()}
-                        </td>
+                    <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Summary
+                    </th>
 
-                        <td className="px-4 py-2">
-                          <div className="flex flex-col items-start gap-1">
+                    <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Failure
+                    </th>
+
+                    <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {displayTimeline.length > 0 ? (
+                    displayTimeline.map((entry) => {
+                      const item =
+                        entry.kind === "linked" ? entry.corrective : entry.item;
+
+                      const linkedHealthCheck =
+                        entry.kind === "linked" ? entry.healthCheck : null;
+
+                      const failureLabel = buildRecurringFailureLabel(item);
+
+                      return (
+                        <tr
+                          key={
+                            entry.kind === "linked"
+                              ? `linked-${entry.healthCheck.id}-${entry.corrective.id}`
+                              : `${item.reportCategory}-${item.id}`
+                          }
+                          className="border-t border-slate-200 hover:bg-slate-50"
+                        >
+                          <td className="whitespace-nowrap px-4 py-2 text-sm text-slate-700">
+                            {new Date(entry.date).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-2">
+                            <div className="flex flex-col items-start gap-1">
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportTypeClasses(
+                                  item.reportCategory
+                                )}`}
+                              >
+                                {reportTypeLabel(item.reportCategory)}
+                              </span>
+
+                              {linkedHealthCheck ? (
+                                <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
+                                  Linked Health Check
+                                </span>
+                              ) : null}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-2">
                             <span
-                              className={`rounded-full px-2.5 py-1 text-xs font-medium ${reportTypeClasses(
-                                item.reportCategory
+                              className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
+                                item.status
                               )}`}
                             >
-                              {reportTypeLabel(item.reportCategory)}
+                              {item.status}
                             </span>
+                          </td>
 
-                            {linkedHealthCheck ? (
-                              <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
-                                Linked Health Check
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-
-                        <td className="px-4 py-2">
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClasses(
-                              item.status
-                            )}`}
-                          >
-                            {item.status}
-                          </span>
-                        </td>
-
-                        <td className="max-w-md px-4 py-2 text-sm text-slate-700">
-                          <div className="text-sm font-medium leading-tight text-slate-900">
-                            {item.title}
-                          </div>
-                          <div className="mt-0.5 line-clamp-1 text-xs leading-tight text-slate-500">
-                            {item.summary || "—"}
-                          </div>
-                        </td>
-
-                        <td className="px-4 py-2 text-sm text-slate-700">
-                          {failureLabel ? (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-sm font-medium text-slate-900">
-                                {failureLabel}
-                              </span>
-
-                              <span className="text-xs text-slate-500">
-                                {[item.failureComponent, item.failureMode]
-                                  .filter(Boolean)
-                                  .join(" · ") || "—"}
-                              </span>
+                          <td className="max-w-md px-4 py-2 text-sm text-slate-700">
+                            <div className="text-sm font-medium leading-tight text-slate-900">
+                              {item.title}
                             </div>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
+                            <div className="mt-0.5 line-clamp-1 text-xs leading-tight text-slate-500">
+                              {item.summary || "—"}
+                            </div>
+                          </td>
 
-                        <td className="px-4 py-2">
-                          <div className="flex flex-col gap-2">
-                            <Link
-                              to={getReportLink(item)}
-                              className="w-fit rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
-                            >
-                              {getReportLinkLabel(item)}
-                            </Link>
+                          <td className="px-4 py-2 text-sm text-slate-700">
+                            {failureLabel ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-sm font-medium text-slate-900">
+                                  {failureLabel}
+                                </span>
 
-                            {linkedHealthCheck ? (
+                                <span className="text-xs text-slate-500">
+                                  {[item.failureComponent, item.failureMode]
+                                    .filter(Boolean)
+                                    .join(" · ") || "—"}
+                                </span>
+                              </div>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+
+                          <td className="px-4 py-2">
+                            <div className="flex flex-col gap-2">
                               <Link
-                                to={`/reports/${linkedHealthCheck.id}`}
+                                to={getReportLink(item)}
                                 className="w-fit rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
                               >
-                                Open health check
+                                {getReportLinkLabel(item)}
                               </Link>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-10 text-center text-sm text-slate-500"
-                    >
-                      No report history found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+
+                              {linkedHealthCheck ? (
+                                <Link
+                                  to={`/reports/${linkedHealthCheck.id}`}
+                                  className="w-fit rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+                                >
+                                  Open health check
+                                </Link>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-4 py-10 text-center text-sm text-slate-500"
+                      >
+                        No report history found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {typeFilter !== "all" ? (
+              <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                Showing only {reportTypeLabel(typeFilter)} reports.
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter("all")}
+                  className="font-medium text-slate-900 underline"
+                >
+                  Clear filter
+                </button>
+              </div>
+            ) : null}
+          </section>
+        </div>
+      </section>
     </section>
-  </section>
-);
+  );
 }

@@ -13,7 +13,7 @@ const routeTitles: Record<string, string> = {
   "/reports": "Reports",
   "/machines": "Machines",
   "/vessels": "Vessels",
-  "/cfr-center": "CFR Center",
+  "/ai-generation": "AI Generation",
   "/insights": "Insights",
 };
 

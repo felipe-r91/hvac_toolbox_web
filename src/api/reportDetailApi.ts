@@ -1,9 +1,5 @@
-// src/api/reportDetailApi.ts
-
 import type { CfrDraftDetail, CorrectiveReportDetail, PreventiveReportDetail } from "../types/report";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://hvac-toolbox-backend.onrender.com";
+import { API_BASE_URL } from "./config";
 
 export async function getHealthCheckReportById(id: string): Promise<PreventiveReportDetail> {
   const response = await fetch(`${API_BASE_URL}/api/reports/preventive/${id}`);

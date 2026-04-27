@@ -1,9 +1,6 @@
 import type { OfficeMachine } from "../types/machine";
 import type { OfficeVessel } from "../types/vessel";
-
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://hvac-toolbox-backend.onrender.com";
+import { API_BASE_URL } from "./config";
 
 export async function getVessels(): Promise<OfficeVessel[]> {
   const response = await fetch(`${API_BASE_URL}/api/fleet/vessels`);

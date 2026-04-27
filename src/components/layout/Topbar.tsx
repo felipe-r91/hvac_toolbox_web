@@ -10,7 +10,7 @@ import {
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/reports": "Reports",
+  //"/reports": "Reports",
   "/machines": "Machines",
   "/vessels": "Vessels",
   "/ai-generation": "AI Generation",

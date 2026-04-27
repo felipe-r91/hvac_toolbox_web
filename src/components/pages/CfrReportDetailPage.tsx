@@ -218,7 +218,7 @@ export function CfrReportDetailPage() {
       </section>
 
       {/* Scrollable content */}
-      <section className="min-h-0 flex-1 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <section className="min-h-0 flex-1 overflow-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="space-y-4">
           {isMachineDown ? (
             <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">

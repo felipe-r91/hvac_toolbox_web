@@ -4,7 +4,7 @@ import { DashboardPage } from "./../components/pages/DashboardPage";
 import { ReportsPage } from "./../components/pages/ReportsPage";
 import { MachinesPage } from "./../components/pages/MachinesPage";
 import { VesselsPage } from "../components/pages/VesselsPage";
-import { CFRCenterPage } from "../components/pages/CFRCenterPage";
+import { AiGenerationPage } from "../components/pages/CFRCenterPage";
 import { InsightsPage } from "../components/pages/InsightsPage";
 import { MachineDetailPage } from "../components/pages/MachineDetailPage";
 import { VesselDetailPage } from "../components/pages/VesselDetailPage";
@@ -23,7 +23,7 @@ export function AppRouter() {
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/machines" element={<MachinesPage />} />
           <Route path="/vessels" element={<VesselsPage />} />
-          <Route path="/cfr-center" element={<CFRCenterPage />} />
+          <Route path="/ai-generation" element={<AiGenerationPage />} />
           <Route path="/insights" element={<InsightsPage />} />
           <Route path="/machines/:machineId" element={<MachineDetailPage />} />
           <Route path="/vessels/:vesselId" element={<VesselDetailPage />} />

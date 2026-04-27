@@ -3,9 +3,9 @@ import { NavLink } from "react-router-dom";
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/reports", label: "Reports" },
-  { to: "/machines", label: "Machines" },
   { to: "/vessels", label: "Vessels" },
-  { to: "/cfr-center", label: "CFR Center" },
+  { to: "/machines", label: "Machines" },
+  { to: "/ai-generation", label: "AI Generation" },
   { to: "/insights", label: "Insights" },
 ];
 

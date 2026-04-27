@@ -10,12 +10,6 @@ function resolvePhotoUrl(url?: string) {
   return `${API_BASE_URL}${url}`;
 }
 
-function returnedStatusClasses(value?: string) {
-  if (value === "yes") return "bg-green-100 text-green-800 ring-green-200";
-  if (value === "no") return "bg-red-100 text-red-800 ring-red-200";
-  return "bg-slate-100 text-slate-700 ring-slate-200";
-}
-
 function formatFailureCode(code?: string) {
   if (!code) return "—";
 
@@ -77,14 +71,6 @@ export function CorrectiveReportDetailPage() {
               <div className="flex flex-wrap gap-2">
                 <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">
                   Corrective
-                </span>
-
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${returnedStatusClasses(
-                    report.machineReturnedToService
-                  )}`}
-                >
-                  Returned: {report.machineReturnedToService}
                 </span>
               </div>
             </div>

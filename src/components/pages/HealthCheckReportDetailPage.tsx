@@ -105,6 +105,18 @@ export function HealthCheckReportDetailPage() {
               />
               <HeaderInfo label="Location" value={report.machineLocation} />
             </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  console.log("Generate AI Report", report.id);
+                }}
+                className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+              >
+                Generate AI Report
+              </button>
+            </div>
           </div>
 
           <div className="flex min-h-64 items-center justify-center overflow-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">

@@ -111,9 +111,9 @@ export function HealthCheckReportDetailPage() {
               <button
                 type="button"
                 onClick={() => {
-                  console.log("Generate AI Report", report.id);
+                  console.log("Generate AI Report", report);
                 }}
-                className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800 flex items-center justify-between"
+                className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800 flex items-center justify-between gap-2"
               > 
               <VscSparkle size={24} />
                 Generate AI Report

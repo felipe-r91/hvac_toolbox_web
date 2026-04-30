@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { getCfrReportById } from "../../api/reportDetailApi";
 import type { CfrDraftDetail } from "../../types/report";
 import { API_BASE_URL } from "../../api/config";
+import { VscSparkle } from "react-icons/vsc";
 
 function statusClasses(status?: string) {
   if (status === "online") {
@@ -197,6 +198,18 @@ export function CfrReportDetailPage() {
                 label="Location"
                 value={report.machineLocation}
               />
+            </div>
+            <div className="-mt-2.5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  console.log("Generate AI Report", report);
+                }}
+                className="flex items-center justify-between gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+              >
+                <VscSparkle size={24} />
+                Generate AI Report
+              </button>
             </div>
           </div>
 

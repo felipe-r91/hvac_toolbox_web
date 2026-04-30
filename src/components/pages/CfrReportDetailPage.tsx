@@ -145,9 +145,6 @@ export function CfrReportDetailPage() {
 
   const headerPhoto = report.machinePhotoPreviewUrl || "";
 
-  console.log("Report data:", report);
-  console.log("Header photo URL:", headerPhoto);
-
   return (
     <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
       {/* Header */}

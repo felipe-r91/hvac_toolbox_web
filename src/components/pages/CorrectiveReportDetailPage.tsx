@@ -50,8 +50,7 @@ export function CorrectiveReportDetailPage() {
     return <CardText text={error || "Corrective report not found."} error />;
   }
 
-  const headerPhoto =
-    report.photos.find((photo) => photo.previewUrl)?.previewUrl || "";
+  const headerPhoto = report.machinePhotoPreviewUrl || "";
 
   return (
     <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">

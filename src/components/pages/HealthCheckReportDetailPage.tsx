@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getHealthCheckReportById } from "../../api/reportDetailApi";
 import type { PreventiveReportDetail } from "../../types/report";
+import { API_BASE_URL } from "../../api/config";
+
+function resolvePhotoUrl(url?: string) {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE_URL}${url}`;
+}
 
 function statusClasses(status?: string) {
   if (status === "online") return "bg-green-100 text-green-800 ring-green-200";
@@ -57,6 +64,8 @@ export function HealthCheckReportDetailPage() {
     return <CardText text={error || "Health check not found."} error />;
   }
 
+  const headerPhoto = report.machinePhotoPreviewUrl || "";
+
   return (
     <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -99,9 +108,17 @@ export function HealthCheckReportDetailPage() {
           </div>
 
           <div className="flex min-h-64 items-center justify-center overflow-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">
-            <div className="px-6 text-center text-sm text-slate-400">
-              Machine photo will be displayed here
-            </div>
+            {headerPhoto ? (
+              <img
+                src={resolvePhotoUrl(headerPhoto)}
+                alt={report.machineTag}
+                className="h-full max-h-80 w-full object-cover"
+              />
+            ) : (
+              <div className="px-6 text-center text-sm text-slate-400">
+                No machine photo available
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -16,27 +16,27 @@ export type CfrDraftDetail = {
   machineType: string;
   machineStarterType: string;
   machineLocation: string;
+  machinePhotoId?: string;
+  machinePhotoPreviewUrl?: string;
   createdAt: string;
 
-  machineStatus: "online" | "down" | "unknown";
-  reportCategory: "cfr";
+  machineStatus: string;
+  reportCategory: string;
 
   failureComponent?: string;
   failureMode?: string;
   failureCode?: string;
 
-  conditionFound: string;
-  symptomsObserved: string;
-  alarmsObserved: string;
-  operationalImpact: string;
+  conditionFound?: string;
+  symptomsObserved?: string;
+  alarmsObserved?: string;
+  operationalImpact?: string;
+  preliminaryDiagnosis?: string;
+  confirmedCause?: string;
+  recommendations?: string;
+  furtherActionRequired?: string;
 
-  preliminaryDiagnosis: string;
-  confirmedCause: string;
-
-  recommendations: string;
-  furtherActionRequired: string;
-
-  synced: boolean;
+  synced?: boolean;
   photos: CfrPhotoDetail[];
 };
 
@@ -71,6 +71,8 @@ export type PreventiveReportDetail = {
   machineModel: string;
   machineType: string;
   machineLocation: string;
+  machinePhotoId?: string;
+  machinePhotoPreviewUrl?: string;
   machineStarterType: string;
   completedAt: string;
   overallStatus: "online" | "down" | "unknown";
@@ -96,6 +98,8 @@ export type CorrectiveReportDetail = {
   machineType: string;
   machineStarterType: string;
   machineLocation: string;
+  machinePhotoId?: string;
+  machinePhotoPreviewUrl?: string;
   createdAt: string;
 
   failureComponent?: string;

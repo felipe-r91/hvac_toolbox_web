@@ -143,8 +143,7 @@ export function CfrReportDetailPage() {
 
   const isMachineDown = report.machineStatus === "down";
 
-  const headerPhoto =
-    report.photos.find((photo) => photo.previewUrl)?.previewUrl || "";
+  const headerPhoto = report.machinePhotoPreviewUrl || "";
 
   console.log("Report data:", report);
   console.log("Header photo URL:", headerPhoto);

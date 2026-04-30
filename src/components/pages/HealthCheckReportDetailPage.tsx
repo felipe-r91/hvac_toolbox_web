@@ -113,7 +113,7 @@ export function HealthCheckReportDetailPage() {
                 onClick={() => {
                   console.log("Generate AI Report", report.id);
                 }}
-                className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+                className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800 flex items-center justify-between"
               > 
               <VscSparkle size={24} />
                 Generate AI Report

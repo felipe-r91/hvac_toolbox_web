@@ -4,6 +4,7 @@ import { getCfrReportById } from "../../api/reportDetailApi";
 import type { CfrDraftDetail } from "../../types/report";
 import { API_BASE_URL } from "../../api/config";
 import { VscSparkle } from "react-icons/vsc";
+import { useNavigate } from "react-router-dom";
 
 function statusClasses(status?: string) {
   if (status === "online") {
@@ -96,10 +97,12 @@ function InfoCard({
 
 export function CfrReportDetailPage() {
   const { reportId } = useParams();
+  const navigate = useNavigate();
 
   const [report, setReport] = useState<CfrDraftDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     if (!reportId) return;
@@ -145,6 +148,35 @@ export function CfrReportDetailPage() {
   const isMachineDown = report.machineStatus === "down";
 
   const headerPhoto = report.machinePhotoPreviewUrl || "";
+
+  async function handleGenerateAiReport() {
+    if (!report?.id) return;
+
+    try {
+      setAiLoading(true);
+
+      const response = await fetch(`${API_BASE_URL}/api/ai-reports/cfr/${report.id}/generate`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const aiReport = await response.json();
+
+      navigate(`/ai-generation/cfr/${report.id}`, {
+      state: {
+        reportType: "cfr",
+        sourceReport: report,
+        aiReport,
+      },
+    });
+      console.log(aiReport);
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   return (
     <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
@@ -202,13 +234,12 @@ export function CfrReportDetailPage() {
             <div className="-mt-2.5 flex justify-end">
               <button
                 type="button"
-                onClick={() => {
-                  console.log("Generate AI Report", report);
-                }}
-                className="flex items-center justify-between gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+                onClick={handleGenerateAiReport}
+                disabled={aiLoading}
+                className="flex items-center justify-between gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-300"
               >
                 <VscSparkle size={24} />
-                Generate AI Report
+                {aiLoading ? "Generating..." : "Generate AI Report"}
               </button>
             </div>
           </div>

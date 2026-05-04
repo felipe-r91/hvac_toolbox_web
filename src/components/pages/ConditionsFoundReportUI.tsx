@@ -970,13 +970,24 @@ export default function ConditionsFoundReportUI({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsPrintPreview((current) => !current)}
-          className="border border-[#003594] bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB]"
-        >
-          {isPrintPreview ? "Screen view" : "A4 preview"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setIsPrintPreview((current) => !current)}
+            className="border border-[#003594] bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB]"
+          >
+            {isPrintPreview ? "Screen view" : "A4 preview"}
+          </button>
+          {isPrintPreview &&
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="border border-[#003594] bg-[#003594] px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-[#00266b]"
+            >
+              Save as PDF
+            </button>}
+
+        </div>
       </div>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>

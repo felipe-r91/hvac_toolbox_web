@@ -13,6 +13,7 @@ export type CfrDraftDetail = {
   machineId: string;
   machineTag: string;
   machineModel: string;
+  machineSerialNumber?: string;
   machineType: string;
   machineStarterType: string;
   machineLocation: string;

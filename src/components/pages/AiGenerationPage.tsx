@@ -2,7 +2,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ConditionsFoundReportUI, {
   type AiCustomerReport,
   type SourceCfrReport,
-} from "../layout/ConditionsFoundReportUI";
+} from "./ConditionsFoundReportUI";
 
 type AiGenerationLocationState =
   | {

@@ -644,7 +644,7 @@ export default function ConditionsFoundReportUI({
         return (
           <Section icon={FaTools} title="Equipment Information">
             <div className="grid gap-2 md:grid-cols-4">
-              <div className="flex max-h-[52mm] flex-col border border-slate-300 bg-white md:col-span-1">
+              <div className="flex max-h-[52mm] min-h-[52mm] flex-col border border-slate-300 bg-white md:col-span-1">
                 <div className="flex flex-1 items-center justify-center overflow-hidden">
                   {sourceReport.machinePhotoPreviewUrl ? (
                     <img

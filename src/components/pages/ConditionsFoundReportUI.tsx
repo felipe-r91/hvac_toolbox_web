@@ -353,6 +353,63 @@ function RecommendationCard({
   );
 }
 
+function SwappableImage({
+  src,
+  alt,
+  className,
+  emptyText = "Click to select image",
+}: {
+  src?: string;
+  alt: string;
+  className?: string;
+  emptyText?: string;
+}) {
+  const [imageUrl, setImageUrl] = React.useState(src || "");
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    setImageUrl(src || "");
+  }, [src]);
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const localUrl = URL.createObjectURL(file);
+    setImageUrl(localUrl);
+
+    event.target.value = "";
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => inputRef.current?.click()}
+      className="group relative h-full w-full overflow-hidden bg-slate-50 print:pointer-events-none"
+    >
+      {imageUrl ? (
+        <img src={imageUrl} alt={alt} className={className} />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center p-4 text-center text-xs text-slate-400">
+          {emptyText}
+        </div>
+      )}
+
+      <div className="absolute inset-0 hidden items-center justify-center bg-black/40 text-xs font-bold uppercase tracking-wide text-white group-hover:flex print:hidden">
+        Change image
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+    </button>
+  );
+}
+
 function ReportHeader({ report }: { report: NormalizedReport }) {
   return (
     <header className="avoid-break overflow-hidden rounded-md border border-slate-300 bg-white">
@@ -415,9 +472,8 @@ function DroppablePageBody({
         setNodeRef(node);
         bodyRef(node);
       }}
-      className={`flex-1 space-y-3 overflow-hidden ${
-        isOver ? "bg-[#EAF6FB]/40" : "bg-white"
-      }`}
+      className={`flex-1 space-y-3 overflow-hidden ${isOver ? "bg-[#EAF6FB]/40" : "bg-white"
+        }`}
     >
       {children}
     </div>
@@ -645,19 +701,17 @@ export default function ConditionsFoundReportUI({
           <Section icon={FaTools} title="Equipment Information">
             <div className="grid gap-2 md:grid-cols-4">
               <div className="flex max-h-[52mm] min-h-[52mm] flex-col border border-slate-300 bg-white md:col-span-1">
-                <div className="flex flex-1 items-center justify-center overflow-hidden">
-                  {sourceReport.machinePhotoPreviewUrl ? (
-                    <img
-                      src={resolvePhotoUrl(sourceReport.machinePhotoPreviewUrl)}
-                      alt={report.equipment.unit}
-                      className="h-full w-full object-contain"
-                    />
-                  ) : (
-                    <div className="p-4 text-center text-xs text-slate-400">
-                      No machine photo available
-                    </div>
-                  )}
-                </div>
+                {sourceReport.machinePhotoPreviewUrl ? (
+                  <img
+                    src={resolvePhotoUrl(sourceReport.machinePhotoPreviewUrl)}
+                    alt={report.equipment.unit}
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <div className="p-4 text-center text-xs text-slate-400">
+                    No machine photo available
+                  </div>
+                )}
                 <div className="border-t border-slate-300 px-2 py-1.5">
                   <p className="text-[9px] uppercase text-slate-500">Unit</p>
                   <p className="text-[11px] font-semibold text-[#003594]">
@@ -751,17 +805,14 @@ export default function ConditionsFoundReportUI({
                     key={photo.id || index}
                     className="overflow-hidden border border-slate-300 bg-slate-50"
                   >
-                    {photo.previewUrl ? (
-                      <img
+                    <div className="h-[70mm]">
+                      <SwappableImage
                         src={resolvePhotoUrl(photo.previewUrl)}
                         alt={photo.caption || `Photo ${index + 1}`}
-                        className="h-[70mm] w-full object-cover"
+                        className="h-full w-full object-cover"
+                        emptyText="Photo unavailable"
                       />
-                    ) : (
-                      <div className="flex h-[70mm] items-center justify-center text-xs text-slate-400">
-                        Photo unavailable
-                      </div>
-                    )}
+                    </div>
 
                     <figcaption className="p-3">
                       <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#003594]">
@@ -866,9 +917,8 @@ export default function ConditionsFoundReportUI({
 
   return (
     <div
-      className={`${
-        isPrintPreview ? "bg-neutral-300 p-4 md:p-8" : "bg-slate-100 p-4 md:p-8"
-      } min-h-screen text-slate-900 print:bg-white print:p-0`}
+      className={`${isPrintPreview ? "bg-neutral-300 p-4 md:p-8" : "bg-slate-100 p-4 md:p-8"
+        } min-h-screen text-slate-900 print:bg-white print:p-0`}
       style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
     >
       <style>{`
@@ -927,16 +977,14 @@ export default function ConditionsFoundReportUI({
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <main
           ref={reportRef}
-          className={`${
-            isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"
-          } mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
+          className={`${isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"
+            } mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
         >
           {pages.map((page, pageIndex) => (
             <section
               key={page.id}
-              className={`${
-                isPrintPreview ? "w-[210mm]" : "w-full"
-              } report-page mx-auto flex h-[297mm] flex-col overflow-hidden bg-white p-[10mm] shadow-none print:mx-0 print:h-[297mm] print:w-[210mm] print:p-[10mm]`}
+              className={`${isPrintPreview ? "w-[210mm]" : "w-full"
+                } report-page mx-auto flex h-[297mm] flex-col overflow-hidden bg-white p-[10mm] shadow-none print:mx-0 print:h-[297mm] print:w-[210mm] print:p-[10mm]`}
             >
               <DroppablePageBody
                 pageId={page.id}

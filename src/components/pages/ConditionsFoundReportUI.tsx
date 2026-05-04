@@ -927,40 +927,60 @@ export default function ConditionsFoundReportUI({
       style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
     >
       <style>{`
-        @page {
-          size: A4;
-          margin: 0;
-        }
+  @page {
+    size: A4;
+    margin: 0;
+  }
 
-        @media print {
-          html,
-          body {
-            margin: 0;
-            padding: 0;
-            background: white;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
+  @media print {
+    body * {
+      visibility: hidden;
+    }
 
-          .report-page {
-            width: 210mm;
-            height: 297mm;
-            page-break-after: always;
-            break-after: page;
-            box-shadow: none !important;
-          }
+    .report-print-area,
+    .report-print-area * {
+      visibility: visible;
+    }
 
-          .report-page:last-child {
-            page-break-after: auto;
-            break-after: auto;
-          }
+    .report-print-area {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 210mm;
+    }
 
-          .avoid-break {
-            page-break-inside: avoid;
-            break-inside: avoid;
-          }
-        }
-      `}</style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .report-page {
+      width: 210mm;
+      height: 297mm;
+      page-break-after: always;
+      break-after: page;
+      box-shadow: none !important;
+    }
+
+    .report-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    .avoid-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .print\\:hidden {
+      display: none !important;
+    }
+  }
+`}</style>
 
       <div className="mx-auto mb-4 flex max-w-[225mm] items-center justify-between border-t border-b border-slate-300 bg-white px-4 py-3 print:hidden">
         <div>
@@ -992,10 +1012,12 @@ export default function ConditionsFoundReportUI({
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <main
-          ref={reportRef}
-          className={`${isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"
-            } mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
-        >
+  ref={reportRef}
+  id="conditions-found-report-print-area"
+  className={`${
+    isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"
+  } report-print-area mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
+>
           {pages.map((page, pageIndex) => (
             <section
               key={page.id}

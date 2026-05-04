@@ -369,9 +369,6 @@ function ReportHeader({ report }: { report: NormalizedReport }) {
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#003594]">
                 <EditableText>{report.branch}</EditableText>
               </p>
-              <p className="mt-1 text-[11px] font-medium text-slate-500">
-                <EditableText>{report.reportNo}</EditableText>
-              </p>
             </div>
           </div>
 

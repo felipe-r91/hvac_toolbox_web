@@ -377,26 +377,33 @@ function SwappableImage({
 
     const localUrl = URL.createObjectURL(file);
     setImageUrl(localUrl);
-
     event.target.value = "";
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => inputRef.current?.click()}
-      className="group relative h-full w-full overflow-hidden bg-slate-50 print:pointer-events-none"
-    >
-      {imageUrl ? (
-        <img src={imageUrl} alt={alt} className={className} />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center p-4 text-center text-xs text-slate-400">
-          {emptyText}
-        </div>
-      )}
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => inputRef.current?.click()}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            inputRef.current?.click();
+          }
+        }}
+        className="group relative h-full w-full cursor-pointer overflow-hidden bg-slate-50 print:pointer-events-none"
+      >
+        {imageUrl ? (
+          <img src={imageUrl} alt={alt} className={className} />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center p-4 text-center text-xs text-slate-400">
+            {emptyText}
+          </div>
+        )}
 
-      <div className="absolute inset-0 hidden items-center justify-center bg-black/40 text-xs font-bold uppercase tracking-wide text-white group-hover:flex print:hidden">
-        Change image
+        <div className="absolute inset-0 hidden items-center justify-center bg-black/40 text-xs font-bold uppercase tracking-wide text-white group-hover:flex print:hidden">
+          Change image
+        </div>
       </div>
 
       <input
@@ -406,7 +413,7 @@ function SwappableImage({
         className="hidden"
         onChange={handleFileChange}
       />
-    </button>
+    </>
   );
 }
 
@@ -700,18 +707,16 @@ export default function ConditionsFoundReportUI({
         return (
           <Section icon={FaTools} title="Equipment Information">
             <div className="grid gap-2 md:grid-cols-4">
-              <div className="flex max-h-[52mm] min-h-[52mm] flex-col border border-slate-300 bg-white md:col-span-1">
-                {sourceReport.machinePhotoPreviewUrl ? (
-                  <img
+              <div className="flex max-h-[52mm] flex-col border border-slate-300 bg-white md:col-span-1">
+                <div className="flex flex-1 items-center justify-center overflow-hidden">
+                  <SwappableImage
                     src={resolvePhotoUrl(sourceReport.machinePhotoPreviewUrl)}
                     alt={report.equipment.unit}
                     className="h-full w-full object-contain"
+                    emptyText="No machine photo available"
                   />
-                ) : (
-                  <div className="p-4 text-center text-xs text-slate-400">
-                    No machine photo available
-                  </div>
-                )}
+                </div>
+
                 <div className="border-t border-slate-300 px-2 py-1.5">
                   <p className="text-[9px] uppercase text-slate-500">Unit</p>
                   <p className="text-[11px] font-semibold text-[#003594]">

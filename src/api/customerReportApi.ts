@@ -17,23 +17,19 @@ export type CreateCustomerReportPayload = {
   createdBy?: string;
 };
 
-export async function uploadCustomerReportPdf(
-  payload: CreateCustomerReportPayload,
-  pdfFile: File
-) {
+export async function uploadCustomerReportPdf(payload: unknown, pdfFile: File) {
+  console.log("Uploading PDF with payload:", payload);
+
   const formData = new FormData();
 
   formData.append(
-    "request",
+    "metadata",
     new Blob([JSON.stringify(payload)], {
       type: "application/json",
     })
   );
 
-  console.log("Uploading PDF with payload:", payload);
-  console.log("Uploading PDF file:", pdfFile);
-
-  formData.append("pdfFile", pdfFile);
+  formData.append("file", pdfFile);
 
   const response = await fetch(`${API_BASE_URL}/api/customer-reports`, {
     method: "POST",

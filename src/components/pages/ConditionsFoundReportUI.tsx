@@ -252,6 +252,13 @@ function StatusPill({
   children: React.ReactNode;
   tone?: Tone;
 }) {
+  const [selectedTone, setSelectedTone] = React.useState<Tone>(tone);
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setSelectedTone(tone);
+  }, [tone]);
+
   const tones: Record<Tone, string> = {
     green: "border-emerald-300 text-emerald-700 bg-emerald-50",
     red: "border-red-300 text-red-700 bg-red-50",
@@ -260,13 +267,83 @@ function StatusPill({
     slate: "border-slate-300 text-slate-700 bg-slate-100",
   };
 
+  const dotColors: Record<Tone, string> = {
+    green: "bg-emerald-500",
+    red: "bg-red-500",
+    amber: "bg-yellow-500",
+    blue: "bg-blue-500",
+    slate: "bg-slate-400",
+  };
+
+  const toneOptions: Tone[] = ["green", "amber", "red", "blue", "slate"];
+
   return (
-    <span
-      className={`inline-flex items-center border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${tones[tone]} print:border-none print:bg-transparent`}
-    >
-      <EditableText>{children}</EditableText>
-    </span>
+    <div className="relative inline-block print:pointer-events-none">
+      <span
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`inline-flex cursor-pointer items-center gap-2 border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${tones[selectedTone]} print:border-none print:bg-transparent`}
+      >
+        <span className={`h-2.5 w-2.5 rounded-full ${dotColors[selectedTone]}`} />
+        <EditableText>{children}</EditableText>
+      </span>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-40 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-slate-200 print:hidden">
+          {toneOptions.map((option) => (
+            <button
+              key={option}
+              onClick={() => {
+                setSelectedTone(option);
+                setIsOpen(false);
+              }}
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+            >
+              <span className={`h-2.5 w-2.5 rounded-full ${dotColors[option]}`} />
+              {option.charAt(0).toUpperCase() + option.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
+}
+
+function getStatusTone(status?: string): Tone {
+  const value = (status || "").toLowerCase();
+
+  if (value.includes("down") || value.includes("offline") || value.includes("non-operational")) {
+    return "red";
+  }
+
+  if (
+    value.includes("restriction") ||
+    value.includes("restricted") ||
+    value.includes("limited") ||
+    value.includes("degraded")
+  ) {
+    return "amber";
+  }
+
+  if (
+    value.includes("online") ||
+    value.includes("operational") ||
+    value.includes("running") ||
+    value.includes("ok")
+  ) {
+    return "green";
+  }
+
+  return "slate";
+}
+
+function getSeverityTone(severity?: string): Tone {
+  const value = (severity || "").toLowerCase();
+
+  if (value.includes("high") || value.includes("critical")) return "red";
+  if (value.includes("medium")) return "amber";
+  if (value.includes("low")) return "green";
+
+  return "slate";
 }
 
 function ReportFooter({
@@ -453,8 +530,13 @@ function ReportHeader({ report }: { report: NormalizedReport }) {
             <EditableText>Machine Status</EditableText>
           </p>
           <div className="flex flex-wrap gap-2">
-            <StatusPill tone="amber">{report.machineStatus}</StatusPill>
-            <StatusPill tone="red">Severity: {report.severity}</StatusPill>
+            <StatusPill tone={getStatusTone(report.machineStatus)}>
+              {report.machineStatus}
+            </StatusPill>
+
+            <StatusPill tone={getSeverityTone(report.severity)}>
+              Severity: {report.severity}
+            </StatusPill>
           </div>
         </div>
       </div>
@@ -1012,12 +1094,11 @@ export default function ConditionsFoundReportUI({
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <main
-  ref={reportRef}
-  id="conditions-found-report-print-area"
-  className={`${
-    isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"
-  } report-print-area mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
->
+          ref={reportRef}
+          id="conditions-found-report-print-area"
+          className={`${isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"
+            } report-print-area mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
+        >
           {pages.map((page, pageIndex) => (
             <section
               key={page.id}

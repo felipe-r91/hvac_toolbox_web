@@ -30,6 +30,9 @@ export async function uploadCustomerReportPdf(
     })
   );
 
+  console.log("Uploading PDF with payload:", payload);
+  console.log("Uploading PDF file:", pdfFile);
+
   formData.append("pdfFile", pdfFile);
 
   const response = await fetch(`${API_BASE_URL}/api/customer-reports`, {

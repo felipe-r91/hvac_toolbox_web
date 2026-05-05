@@ -254,10 +254,12 @@ function StatusPill({
   children,
   tone = "slate",
   isPrintPreview = false,
+  preservePrintStyle = false,
 }: {
   children: React.ReactNode;
   tone?: Tone;
   isPrintPreview?: boolean;
+  preservePrintStyle?: boolean;
 }) {
   const [selectedTone, setSelectedTone] = React.useState<Tone>(tone);
   const [isOpen, setIsOpen] = React.useState(false);
@@ -307,7 +309,9 @@ function StatusPill({
         onClick={openMenu}
         className={`inline-flex items-center border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${
           isPrintPreview ? "cursor-default" : "cursor-pointer"
-        } ${tones[selectedTone]} print:border-none print:bg-transparent`}
+        } ${tones[selectedTone]} ${
+          preservePrintStyle ? "" : "print:border-none print:bg-transparent"
+        }`}
       >
         <EditableText>{children}</EditableText>
       </span>
@@ -316,7 +320,7 @@ function StatusPill({
         isOpen &&
         createPortal(
           <div
-            className="fixed z-[9999] w-40 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-slate-200 print:hidden"
+            className="fixed z-9999 w-40 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-slate-200 print:hidden"
             style={{
               top: menuPosition.top,
               left: menuPosition.left,
@@ -609,11 +613,19 @@ function ReportHeader({
             <EditableText>Machine Status</EditableText>
           </p>
           <div className="flex flex-wrap gap-2">
-            <StatusPill tone={getStatusTone(report.machineStatus)} isPrintPreview={isPrintPreview}>
+            <StatusPill
+              tone={getStatusTone(report.machineStatus)}
+              isPrintPreview={isPrintPreview}
+              preservePrintStyle
+            >
               {report.machineStatus}
             </StatusPill>
 
-            <StatusPill tone={getSeverityTone(report.severity)} isPrintPreview={isPrintPreview}>
+            <StatusPill
+              tone={getSeverityTone(report.severity)}
+              isPrintPreview={isPrintPreview}
+              preservePrintStyle
+            >
               Severity: {report.severity}
             </StatusPill>
           </div>

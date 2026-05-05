@@ -233,10 +233,15 @@ export function CfrReportDetailPage() {
     let index = 0;
 
     const interval = window.setInterval(() => {
-      if (index >= steps.length) return;
+      const step = steps[index];
 
-      setAiProgress((current) => Math.max(current, steps[index].progress));
-      setAiStep(steps[index].text);
+      if (!step) {
+        window.clearInterval(interval);
+        return;
+      }
+
+      setAiProgress((current) => Math.max(current, step.progress));
+      setAiStep(step.text);
       index += 1;
     }, 1100);
 

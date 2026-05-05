@@ -1115,37 +1115,43 @@ export default function ConditionsFoundReportUI({
   }
 
   async function createReportPdfBlob(element: HTMLElement): Promise<Blob> {
-    const canvas = await html2canvas(element, {
-      scale: 2,
+  const pages = Array.from(
+    element.querySelectorAll<HTMLElement>(".report-page")
+  );
+
+  if (pages.length === 0) {
+    throw new Error("No report pages found.");
+  }
+
+  const pdf = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+    compress: true,
+  });
+
+  for (let index = 0; index < pages.length; index++) {
+    const page = pages[index];
+
+    const canvas = await html2canvas(page, {
+      scale: 3,
       useCORS: true,
       backgroundColor: "#ffffff",
+      windowWidth: page.scrollWidth,
+      windowHeight: page.scrollHeight,
     });
 
-    const imgData = canvas.toDataURL("image/jpeg", 0.98);
+    const imgData = canvas.toDataURL("image/png");
 
-    const pdf = new jsPDF("p", "mm", "a4");
-
-    const pageWidth = 210;
-    const pageHeight = 297;
-
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position -= pageHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+    if (index > 0) {
+      pdf.addPage("a4", "portrait");
     }
 
-    return pdf.output("blob");
+    pdf.addImage(imgData, "PNG", 0, 0, 210, 297);
   }
+
+  return pdf.output("blob");
+}
 
   async function handleUploadCustomerReport() {
     if (!reportRef.current || isUploadingReport) return;

@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext,
   type DragEndEvent,
@@ -214,9 +215,11 @@ function Section({
 function DraggableSection({
   id,
   children,
+  isEditing,
 }: {
   id: SectionId;
   children: React.ReactNode;
+  isEditing: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id });
@@ -232,14 +235,16 @@ function DraggableSection({
         zIndex: isDragging ? 50 : undefined,
       }}
     >
-      <button
-        type="button"
-        {...listeners}
-        {...attributes}
-        className="absolute right-2 top-2 z-10 hidden items-center gap-1 border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 hover:bg-slate-100 print:hidden md:inline-flex"
-      >
-        <FaGripVertical className="h-3 w-3" /> Move
-      </button>
+      {isEditing && (
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          className="absolute right-2 top-2 z-10 hidden items-center gap-1 border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 hover:bg-slate-100 print:hidden md:inline-flex"
+        >
+          <FaGripVertical className="h-3 w-3" /> Move
+        </button>
+      )}
       {children}
     </div>
   );
@@ -248,16 +253,34 @@ function DraggableSection({
 function StatusPill({
   children,
   tone = "slate",
+  isPrintPreview = false,
 }: {
   children: React.ReactNode;
   tone?: Tone;
+  isPrintPreview?: boolean;
 }) {
   const [selectedTone, setSelectedTone] = React.useState<Tone>(tone);
   const [isOpen, setIsOpen] = React.useState(false);
+  const pillRef = React.useRef<HTMLSpanElement | null>(null);
+  const [menuPosition, setMenuPosition] = React.useState({ top: 0, left: 0 });
 
   React.useEffect(() => {
     setSelectedTone(tone);
   }, [tone]);
+
+  function openMenu() {
+    if (isPrintPreview) return;
+
+    const rect = pillRef.current?.getBoundingClientRect();
+    if (rect) {
+      setMenuPosition({
+        top: rect.bottom + 6,
+        left: rect.left,
+      });
+    }
+
+    setIsOpen((prev) => !prev);
+  }
 
   const tones: Record<Tone, string> = {
     green: "border-emerald-300 text-emerald-700 bg-emerald-50",
@@ -278,33 +301,45 @@ function StatusPill({
   const toneOptions: Tone[] = ["green", "amber", "red", "blue", "slate"];
 
   return (
-    <div className="relative inline-block print:pointer-events-none">
+    <>
       <span
-        onClick={() => setIsOpen((prev) => !prev)}
-        className={`inline-flex cursor-pointer items-center gap-2 border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${tones[selectedTone]} print:border-none print:bg-transparent`}
+        ref={pillRef}
+        onClick={openMenu}
+        className={`inline-flex items-center border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${
+          isPrintPreview ? "cursor-default" : "cursor-pointer"
+        } ${tones[selectedTone]} print:border-none print:bg-transparent`}
       >
-        <span className={`h-2.5 w-2.5 rounded-full ${dotColors[selectedTone]}`} />
         <EditableText>{children}</EditableText>
       </span>
 
-      {isOpen && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-40 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-slate-200 print:hidden">
-          {toneOptions.map((option) => (
-            <button
-              key={option}
-              onClick={() => {
-                setSelectedTone(option);
-                setIsOpen(false);
-              }}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
-            >
-              <span className={`h-2.5 w-2.5 rounded-full ${dotColors[option]}`} />
-              {option.charAt(0).toUpperCase() + option.slice(1)}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {!isPrintPreview &&
+        isOpen &&
+        createPortal(
+          <div
+            className="fixed z-[9999] w-40 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-slate-200 print:hidden"
+            style={{
+              top: menuPosition.top,
+              left: menuPosition.left,
+            }}
+          >
+            {toneOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => {
+                  setSelectedTone(option);
+                  setIsOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+              >
+                <span className={`h-2.5 w-2.5 rounded-full ${dotColors[option]}`} />
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
 
@@ -384,19 +419,29 @@ function ReportFooter({
   );
 }
 
-function AlarmCard({ alarm, onDelete }: { alarm: string; onDelete: () => void }) {
+function AlarmCard({
+  alarm,
+  onDelete,
+  isEditing,
+}: {
+  alarm: string;
+  onDelete: () => void;
+  isEditing: boolean;
+}) {
   return (
     <li className="group flex gap-3 bg-amber-50 p-2.5 text-sm text-amber-950 ring-1 ring-amber-100">
       <FaExclamationTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
       <EditableText className="flex-1">{alarm}</EditableText>
 
-      <button
-        type="button"
-        onClick={onDelete}
-        className="ml-auto hidden shrink-0 border border-amber-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800 hover:bg-amber-100 group-hover:inline-flex print:hidden"
-      >
-        Delete
-      </button>
+      {isEditing && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="ml-auto hidden shrink-0 border border-amber-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800 hover:bg-amber-100 group-hover:inline-flex print:hidden"
+        >
+          Delete
+        </button>
+      )}
     </li>
   );
 }
@@ -405,10 +450,12 @@ function RecommendationCard({
   recommendation,
   index,
   onDelete,
+  isEditing,
 }: {
   recommendation: string;
   index: number;
   onDelete: () => void;
+  isEditing: boolean;
 }) {
   return (
     <li className="group flex gap-3 border-t border-b border-slate-300 bg-white p-2.5">
@@ -419,13 +466,15 @@ function RecommendationCard({
         {recommendation}
       </EditableText>
 
-      <button
-        type="button"
-        onClick={onDelete}
-        className="ml-auto hidden shrink-0 self-start border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 hover:bg-slate-100 group-hover:inline-flex print:hidden"
-      >
-        Delete
-      </button>
+      {isEditing && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="ml-auto hidden shrink-0 self-start border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 hover:bg-slate-100 group-hover:inline-flex print:hidden"
+        >
+          Delete
+        </button>
+      )}
     </li>
   );
 }
@@ -435,11 +484,13 @@ function SwappableImage({
   alt,
   className,
   emptyText = "Click to select image",
+  isEditing = true,
 }: {
   src?: string;
   alt: string;
   className?: string;
   emptyText?: string;
+  isEditing?: boolean;
 }) {
   const [imageUrl, setImageUrl] = React.useState(src || "");
   const inputRef = React.useRef<HTMLInputElement | null>(null);
@@ -448,27 +499,45 @@ function SwappableImage({
     setImageUrl(src || "");
   }, [src]);
 
+  React.useEffect(() => {
+    return () => {
+      if (imageUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+  }, [imageUrl]);
+
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const localUrl = URL.createObjectURL(file);
-    setImageUrl(localUrl);
+    setImageUrl((current) => {
+      if (current.startsWith("blob:")) {
+        URL.revokeObjectURL(current);
+      }
+      return URL.createObjectURL(file);
+    });
+
     event.target.value = "";
   }
 
   return (
     <>
       <div
-        role="button"
-        tabIndex={0}
-        onClick={() => inputRef.current?.click()}
+        role={isEditing ? "button" : undefined}
+        tabIndex={isEditing ? 0 : -1}
+        onClick={() => {
+          if (isEditing) inputRef.current?.click();
+        }}
         onKeyDown={(event) => {
+          if (!isEditing) return;
           if (event.key === "Enter" || event.key === " ") {
             inputRef.current?.click();
           }
         }}
-        className="group relative h-full w-full cursor-pointer overflow-hidden bg-slate-50 print:pointer-events-none"
+        className={`group relative h-full w-full overflow-hidden bg-slate-50 print:pointer-events-none ${
+          isEditing ? "cursor-pointer" : "cursor-default"
+        }`}
       >
         {imageUrl ? (
           <img src={imageUrl} alt={alt} className={className} />
@@ -478,23 +547,33 @@ function SwappableImage({
           </div>
         )}
 
-        <div className="absolute inset-0 hidden items-center justify-center bg-black/40 text-xs font-bold uppercase tracking-wide text-white group-hover:flex print:hidden">
-          Change image
-        </div>
+        {isEditing && (
+          <div className="absolute inset-0 hidden items-center justify-center bg-black/40 text-xs font-bold uppercase tracking-wide text-white group-hover:flex print:hidden">
+            Change image
+          </div>
+        )}
       </div>
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+      {isEditing && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      )}
     </>
   );
 }
 
-function ReportHeader({ report }: { report: NormalizedReport }) {
+function ReportHeader({
+  report,
+  isPrintPreview,
+}: {
+  report: NormalizedReport;
+  isPrintPreview: boolean;
+}) {
   return (
     <header className="avoid-break overflow-hidden rounded-md border border-slate-300 bg-white">
       <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-end">
@@ -530,11 +609,11 @@ function ReportHeader({ report }: { report: NormalizedReport }) {
             <EditableText>Machine Status</EditableText>
           </p>
           <div className="flex flex-wrap gap-2">
-            <StatusPill tone={getStatusTone(report.machineStatus)}>
+            <StatusPill tone={getStatusTone(report.machineStatus)} isPrintPreview={isPrintPreview}>
               {report.machineStatus}
             </StatusPill>
 
-            <StatusPill tone={getSeverityTone(report.severity)}>
+            <StatusPill tone={getSeverityTone(report.severity)} isPrintPreview={isPrintPreview}>
               Severity: {report.severity}
             </StatusPill>
           </div>
@@ -561,8 +640,7 @@ function DroppablePageBody({
         setNodeRef(node);
         bodyRef(node);
       }}
-      className={`flex-1 space-y-3 overflow-hidden ${isOver ? "bg-[#EAF6FB]/40" : "bg-white"
-        }`}
+      className={`flex-1 space-y-3 overflow-hidden ${isOver ? "bg-[#EAF6FB]/40" : "bg-white"}`}
     >
       {children}
     </div>
@@ -658,6 +736,7 @@ export default function ConditionsFoundReportUI({
   const reportPhotos = sourceReport.photos || [];
 
   const [isPrintPreview, setIsPrintPreview] = React.useState(false);
+  const isEditing = !isPrintPreview;
   const [alarms, setAlarms] = React.useState<string[]>(report.alarms);
   const [recommendations, setRecommendations] = React.useState<string[]>(
     report.recommendations
@@ -735,6 +814,8 @@ export default function ConditionsFoundReportUI({
   }, [pages, alarms, recommendations]);
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!isEditing) return;
+
     const activeSectionId = event.active.id as SectionId;
     const targetPageId = event.over?.id as string | undefined;
 
@@ -796,6 +877,7 @@ export default function ConditionsFoundReportUI({
                     alt={report.equipment.unit}
                     className="h-full w-full object-contain"
                     emptyText="No machine photo available"
+                    isEditing={isEditing}
                   />
                 </div>
 
@@ -851,15 +933,17 @@ export default function ConditionsFoundReportUI({
             icon={FaExclamationTriangle}
             title="Alarms / Abnormal Readings"
             right={
-              <button
-                type="button"
-                onClick={() =>
-                  setAlarms((current) => [...current, "New alarm / abnormal reading"])
-                }
-                className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
-              >
-                Add alarm
-              </button>
+              isEditing ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAlarms((current) => [...current, "New alarm / abnormal reading"])
+                  }
+                  className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
+                >
+                  Add alarm
+                </button>
+              ) : null
             }
           >
             {alarms.length > 0 ? (
@@ -868,6 +952,7 @@ export default function ConditionsFoundReportUI({
                   <AlarmCard
                     key={`${alarm}-${index}`}
                     alarm={alarm}
+                    isEditing={isEditing}
                     onDelete={() =>
                       setAlarms((current) =>
                         current.filter((_, itemIndex) => itemIndex !== index)
@@ -898,6 +983,7 @@ export default function ConditionsFoundReportUI({
                         alt={photo.caption || `Photo ${index + 1}`}
                         className="h-full w-full object-cover"
                         emptyText="Photo unavailable"
+                        isEditing={isEditing}
                       />
                     </div>
 
@@ -945,15 +1031,17 @@ export default function ConditionsFoundReportUI({
             icon={FaCheckCircle}
             title="Recommendations"
             right={
-              <button
-                type="button"
-                onClick={() =>
-                  setRecommendations((current) => [...current, "New recommendation"])
-                }
-                className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
-              >
-                Add recommendation
-              </button>
+              isEditing ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRecommendations((current) => [...current, "New recommendation"])
+                  }
+                  className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
+                >
+                  Add recommendation
+                </button>
+              ) : null
             }
           >
             {recommendations.length > 0 ? (
@@ -963,6 +1051,7 @@ export default function ConditionsFoundReportUI({
                     key={`${item}-${index}`}
                     recommendation={item}
                     index={index}
+                    isEditing={isEditing}
                     onDelete={() =>
                       setRecommendations((current) =>
                         current.filter((_, itemIndex) => itemIndex !== index)
@@ -1004,8 +1093,7 @@ export default function ConditionsFoundReportUI({
 
   return (
     <div
-      className={`${isPrintPreview ? "bg-neutral-300 p-4 md:p-8" : "bg-slate-100 p-4 md:p-8"
-        } min-h-screen text-slate-900 print:bg-white print:p-0`}
+      className={`${isPrintPreview ? "bg-neutral-300 p-4 md:p-8" : "bg-slate-100 p-4 md:p-8"} min-h-screen text-slate-900 print:bg-white print:p-0`}
       style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
     >
       <style>{`
@@ -1080,15 +1168,15 @@ export default function ConditionsFoundReportUI({
           >
             {isPrintPreview ? "Screen view" : "A4 preview"}
           </button>
-          {isPrintPreview &&
+          {isPrintPreview && (
             <button
               type="button"
               onClick={() => window.print()}
               className="border border-[#003594] bg-[#003594] px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-[#00266b]"
             >
               Save as PDF
-            </button>}
-
+            </button>
+          )}
         </div>
       </div>
 
@@ -1096,14 +1184,12 @@ export default function ConditionsFoundReportUI({
         <main
           ref={reportRef}
           id="conditions-found-report-print-area"
-          className={`${isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"
-            } report-print-area mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
+          className={`${isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"} report-print-area mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
         >
           {pages.map((page, pageIndex) => (
             <section
               key={page.id}
-              className={`${isPrintPreview ? "w-[210mm]" : "w-full"
-                } report-page mx-auto flex h-[297mm] flex-col overflow-hidden bg-white p-[10mm] shadow-none print:mx-0 print:h-[297mm] print:w-[210mm] print:p-[10mm]`}
+              className={`${isPrintPreview ? "w-[210mm]" : "w-full"} report-page mx-auto flex h-[297mm] flex-col overflow-hidden bg-white p-[10mm] shadow-none print:mx-0 print:h-[297mm] print:w-[210mm] print:p-[10mm]`}
             >
               <DroppablePageBody
                 pageId={page.id}
@@ -1111,7 +1197,9 @@ export default function ConditionsFoundReportUI({
                   pageBodyRefs.current[page.id] = node;
                 }}
               >
-                {pageIndex === 0 && <ReportHeader report={report} />}
+                {pageIndex === 0 && (
+                  <ReportHeader report={report} isPrintPreview={isPrintPreview} />
+                )}
 
                 {page.sections.map((sectionId) => {
                   const isFixedSection =
@@ -1122,7 +1210,7 @@ export default function ConditionsFoundReportUI({
                   }
 
                   return (
-                    <DraggableSection key={sectionId} id={sectionId}>
+                    <DraggableSection key={sectionId} id={sectionId} isEditing={isEditing}>
                       {renderSection(sectionId)}
                     </DraggableSection>
                   );

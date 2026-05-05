@@ -21,7 +21,8 @@ import {
   FaGripVertical,
 } from "react-icons/fa";
 import { API_BASE_URL } from "../../api/config";
-import html2pdf from "html2pdf.js";
+import html2canvas from "html2canvas-pro";
+import jsPDF from "jspdf";
 import { uploadCustomerReportPdf } from "../../api/customerReportApi";
 
 type Tone = "green" | "red" | "amber" | "blue" | "slate";
@@ -1113,6 +1114,39 @@ export default function ConditionsFoundReportUI({
     });
   }
 
+  async function createReportPdfBlob(element: HTMLElement): Promise<Blob> {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+    });
+
+    const imgData = canvas.toDataURL("image/jpeg", 0.98);
+
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const pageWidth = 210;
+    const pageHeight = 297;
+
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position -= pageHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    return pdf.output("blob");
+  }
+
   async function handleUploadCustomerReport() {
     if (!reportRef.current || isUploadingReport) return;
 
@@ -1127,30 +1161,7 @@ export default function ConditionsFoundReportUI({
         "_"
       );
 
-      const options = {
-        margin: 0,
-        filename,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: "#ffffff",
-        },
-        jsPDF: {
-          unit: "mm",
-          format: "a4",
-          orientation: "portrait",
-        },
-        pagebreak: {
-          mode: ["css", "legacy"],
-        },
-      } as const;
-
-      const pdfBlob: Blob = await html2pdf()
-        .set(options)
-        .from(reportRef.current)
-        .outputPdf("blob");
+      const pdfBlob = await createReportPdfBlob(reportRef.current);
 
       const pdfFile = new File([pdfBlob], filename, {
         type: "application/pdf",

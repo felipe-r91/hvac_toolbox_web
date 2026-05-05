@@ -43,10 +43,12 @@ export function AiGenerationPage() {
 
   if (reportType === "cfr" && state.reportType === "cfr") {
     return (
-      <ConditionsFoundReportUI
-        aiReport={state.aiReport}
-        sourceReport={state.sourceReport}
-      />
+      <div className="h-[calc(100vh-96px)] overflow-y-auto overflow-x-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">
+        <ConditionsFoundReportUI
+          aiReport={state.aiReport}
+          sourceReport={state.sourceReport}
+        />
+      </div>
     );
   }
 

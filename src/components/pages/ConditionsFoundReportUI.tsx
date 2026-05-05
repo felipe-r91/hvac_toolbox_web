@@ -21,6 +21,8 @@ import {
   FaGripVertical,
 } from "react-icons/fa";
 import { API_BASE_URL } from "../../api/config";
+import html2pdf from "html2pdf.js";
+import { uploadCustomerReportPdf } from "../../api/customerReportApi";
 
 type Tone = "green" | "red" | "amber" | "blue" | "slate";
 type SectionId =
@@ -70,6 +72,7 @@ export type AiCustomerReport = {
 export type SourceCfrReport = {
   id?: string;
   vesselName?: string;
+  vesselId?: string;
   vesselImoNumber?: string;
   vesselType?: string;
   vesselOwner?: string;
@@ -77,6 +80,7 @@ export type SourceCfrReport = {
   vesselContact?: string;
 
   machineTag?: string;
+  machineId?: string;
   machineModel?: string;
   machineType?: string;
   machineStarterType?: string;
@@ -307,11 +311,9 @@ function StatusPill({
       <span
         ref={pillRef}
         onClick={openMenu}
-        className={`inline-flex items-center border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${
-          isPrintPreview ? "cursor-default" : "cursor-pointer"
-        } ${tones[selectedTone]} ${
-          preservePrintStyle ? "" : "print:border-none print:bg-transparent"
-        }`}
+        className={`inline-flex items-center border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${isPrintPreview ? "cursor-default" : "cursor-pointer"
+          } ${tones[selectedTone]} ${preservePrintStyle ? "" : "print:border-none print:bg-transparent"
+          }`}
       >
         <EditableText>{children}</EditableText>
       </span>
@@ -539,9 +541,8 @@ function SwappableImage({
             inputRef.current?.click();
           }
         }}
-        className={`group relative h-full w-full overflow-hidden bg-slate-50 print:pointer-events-none ${
-          isEditing ? "cursor-pointer" : "cursor-default"
-        }`}
+        className={`group relative h-full w-full overflow-hidden bg-slate-50 print:pointer-events-none ${isEditing ? "cursor-pointer" : "cursor-default"
+          }`}
       >
         {imageUrl ? (
           <img src={imageUrl} alt={alt} className={className} />
@@ -757,6 +758,7 @@ export default function ConditionsFoundReportUI({
   const reportRef = React.useRef<HTMLElement | null>(null);
   const pageBodyRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const [totalPages, setTotalPages] = React.useState(0);
+  const [isUploadingReport, setIsUploadingReport] = React.useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -1103,6 +1105,86 @@ export default function ConditionsFoundReportUI({
     }
   }
 
+  function waitForRender() {
+    return new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+  }
+
+  async function handleUploadCustomerReport() {
+    if (!reportRef.current || isUploadingReport) return;
+
+    try {
+      setIsUploadingReport(true);
+      setIsPrintPreview(true);
+
+      await waitForRender();
+
+      const filename = `${report.reportNo || "customer-report"}.pdf`.replaceAll(
+        /[^a-zA-Z0-9._-]/g,
+        "_"
+      );
+
+      const options = {
+        margin: 0,
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+        },
+        jsPDF: {
+          unit: "mm",
+          format: "a4",
+          orientation: "portrait",
+        },
+        pagebreak: {
+          mode: ["css", "legacy"],
+        },
+      } as const;
+
+      const pdfBlob: Blob = await html2pdf()
+        .set(options)
+        .from(reportRef.current)
+        .outputPdf("blob");
+
+      const pdfFile = new File([pdfBlob], filename, {
+        type: "application/pdf",
+      });
+
+      await uploadCustomerReportPdf(
+        {
+          sourceReportId: sourceReport.id,
+          sourceReportType: "cfr",
+
+          vesselId: sourceReport.vesselId,
+          vesselName: sourceReport.vesselName,
+
+          machineId: sourceReport.machineId,
+          machineTag: sourceReport.machineTag,
+          machineModel: sourceReport.machineModel,
+          machineType: sourceReport.machineType,
+          machineStatus: report.machineStatus,
+
+          title: report.title,
+          createdBy: report.engineer || "Not provided",
+        },
+        pdfFile
+      );
+
+      alert("Customer report saved successfully.");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to save customer report.");
+    } finally {
+      setIsUploadingReport(false);
+    }
+  }
+
   return (
     <div
       className={`${isPrintPreview ? "bg-neutral-300 p-4 md:p-8" : "bg-slate-100 p-4 md:p-8"} min-h-screen text-slate-900 print:bg-white print:p-0`}
@@ -1183,10 +1265,14 @@ export default function ConditionsFoundReportUI({
           {isPrintPreview && (
             <button
               type="button"
-              onClick={() => window.print()}
-              className="border border-[#003594] bg-[#003594] px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-[#00266b]"
+              onClick={async () => {
+                await handleUploadCustomerReport();
+                window.print();
+              }}
+              disabled={isUploadingReport}
+              className="border border-[#003594] bg-[#003594] px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-[#00266b] disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              Save as PDF
+              {isUploadingReport ? "Saving..." : "Save as PDF"}
             </button>
           )}
         </div>

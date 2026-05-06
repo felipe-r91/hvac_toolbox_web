@@ -4,6 +4,7 @@ import { getCorrectiveReportById } from "../../api/reportDetailApi";
 import type { CorrectiveReportDetail } from "../../types/report";
 import { API_BASE_URL } from "../../api/config";
 import { VscSparkle } from "react-icons/vsc";
+import { useNavigate } from "react-router-dom";
 
 function resolvePhotoUrl(url?: string) {
   if (!url) return "";
@@ -20,12 +21,104 @@ function formatFailureCode(code?: string) {
     .join(" ");
 }
 
+function AiGenerationProgress({
+  progress,
+  step,
+}: {
+  progress: number;
+  step: string;
+}) {
+  return (
+    <div className="mt-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            AI report generation
+          </p>
+          <p className="mt-1 text-sm font-medium text-slate-700">
+            {step || "Preparing AI generation..."}
+          </p>
+        </div>
+
+        <span className="shrink-0 rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+          {progress}%
+        </span>
+      </div>
+
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
+        <div
+          className="h-full rounded-full bg-slate-900 transition-all duration-500 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function LoadingImage({
+  src,
+  alt,
+  className = "",
+  wrapperClassName = "",
+  emptyText = "No image available",
+}: {
+  src?: string;
+  alt: string;
+  className?: string;
+  wrapperClassName?: string;
+  emptyText?: string;
+}) {
+  const [isLoading, setIsLoading] = useState(Boolean(src));
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(Boolean(src));
+    setHasError(false);
+  }, [src]);
+
+  if (!src || hasError) {
+    return (
+      <div className={`flex items-center justify-center bg-slate-100 ${wrapperClassName}`}>
+        <div className="px-6 text-center text-sm text-slate-400">
+          {hasError ? "Image failed to load." : emptyText}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative overflow-hidden bg-slate-100 ${wrapperClassName}`}>
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-100 text-slate-400">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+          <p className="text-xs font-medium">Loading image...</p>
+        </div>
+      )}
+
+      <img
+        src={src}
+        alt={alt}
+        className={`${className} ${isLoading ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
+        onLoad={() => setIsLoading(false)}
+        onError={() => {
+          setIsLoading(false);
+          setHasError(true);
+        }}
+      />
+    </div>
+  );
+}
+
 export function CorrectiveReportDetailPage() {
   const { reportId } = useParams();
+  const navigate = useNavigate();
 
   const [report, setReport] = useState<CorrectiveReportDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiProgress, setAiProgress] = useState(0);
+  const [aiStep, setAiStep] = useState("");
 
   useEffect(() => {
     if (!reportId) return;
@@ -46,12 +139,92 @@ export function CorrectiveReportDetailPage() {
     run();
   }, [reportId]);
 
+  useEffect(() => {
+    if (!aiLoading) return;
+
+    setAiProgress(8);
+    setAiStep("Preparing corrective report data...");
+
+    const steps = [
+      { progress: 18, text: "Reading corrective notes..." },
+      { progress: 32, text: "Reviewing fault classification..." },
+      { progress: 46, text: "Searching relevant manual references..." },
+      { progress: 62, text: "Building service report analysis..." },
+      { progress: 78, text: "Generating customer-ready service report..." },
+      { progress: 90, text: "Formatting service report sections..." },
+    ];
+
+    let index = 0;
+
+    const interval = window.setInterval(() => {
+      const step = steps[index];
+
+      if (!step) {
+        window.clearInterval(interval);
+        return;
+      }
+
+      setAiProgress((current) => Math.max(current, step.progress));
+      setAiStep(step.text);
+      index += 1;
+    }, 1100);
+
+    return () => window.clearInterval(interval);
+  }, [aiLoading]);
+
   if (loading) return <CardText text="Loading corrective report..." />;
   if (error || !report) {
     return <CardText text={error || "Corrective report not found."} error />;
   }
 
   const headerPhoto = report.machinePhotoPreviewUrl || "";
+
+  async function handleGenerateAiReport() {
+    if (!report?.id || aiLoading) return;
+
+    try {
+      setAiLoading(true);
+      setAiProgress(5);
+      setAiStep("Starting AI generation...");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/ai-reports/corrective/${report.id}/generate`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      setAiProgress(96);
+      setAiStep("Receiving generated service report...");
+
+      const aiReport = await response.json();
+
+      setAiProgress(100);
+      setAiStep("Service report generated successfully.");
+
+      window.setTimeout(() => {
+        navigate(`/ai-generation/corrective/${report.id}`, {
+          state: {
+            reportType: "corrective",
+            sourceReport: report,
+            aiReport,
+          },
+        });
+      }, 350);
+    } catch (err) {
+      console.error(err);
+      setAiStep("AI generation failed. Please try again.");
+      setAiProgress(0);
+    } finally {
+      window.setTimeout(() => {
+        setAiLoading(false);
+      }, 500);
+    }
+  }
 
   return (
     <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
@@ -84,33 +257,31 @@ export function CorrectiveReportDetailPage() {
               />
               <HeaderInfo label="Location" value={report.machineLocation} />
             </div>
+
             <div className="-mt-2.5 flex justify-end">
               <button
                 type="button"
-                onClick={() => {
-                  console.log("Generate AI Report", report);
-                }}
-                className="flex items-center justify-between gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+                onClick={handleGenerateAiReport}
+                disabled={aiLoading}
+                className="flex items-center justify-between gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 <VscSparkle size={24} />
-                Generate AI Report
+                {aiLoading ? "Generating..." : "Generate AI Report"}
               </button>
             </div>
-          </div>
 
-          <div className="flex min-h-64 items-center justify-center overflow-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">
-            {headerPhoto ? (
-              <img
-                src={resolvePhotoUrl(headerPhoto)}
-                alt={report.machineTag}
-                className="h-full max-h-80 w-full object-cover"
-              />
-            ) : (
-              <div className="px-6 text-center text-sm text-slate-400">
-                No machine photo available
-              </div>
+            {aiLoading && (
+              <AiGenerationProgress progress={aiProgress} step={aiStep} />
             )}
           </div>
+
+          <LoadingImage
+            src={resolvePhotoUrl(headerPhoto)}
+            alt={report.machineTag}
+            wrapperClassName="flex min-h-64 items-center justify-center rounded-3xl ring-1 ring-slate-200"
+            className="h-full max-h-80 w-full object-cover"
+            emptyText="No machine photo available"
+          />
         </div>
       </section>
 
@@ -149,10 +320,12 @@ export function CorrectiveReportDetailPage() {
                     key={photo.id}
                     className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200"
                   >
-                    <img
+                    <LoadingImage
                       src={resolvePhotoUrl(photo.previewUrl)}
                       alt={photo.caption || "Corrective photo"}
+                      wrapperClassName="h-56 w-full rounded-2xl"
                       className="h-56 w-full rounded-2xl object-cover"
+                      emptyText="Photo unavailable"
                     />
 
                     <p className="mt-3 text-sm text-slate-700">

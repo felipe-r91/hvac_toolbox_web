@@ -351,6 +351,7 @@ function StatusPill({
 
 function getStatusTone(status?: string): Tone {
     const value = (status || "").toLowerCase();
+    console.log("Determining tone for status:", value);
 
     if (
         value.includes("not returned") ||
@@ -636,7 +637,7 @@ function ReportHeader({
                             isPrintPreview={isPrintPreview}
                             preservePrintStyle
                         >
-                            {report.machineStatus?.toLowerCase() || "unknown"}
+                            {report.machineReturnedToService?.toLowerCase() || "unknown"}
                         </StatusPill>
 
                         <StatusPill
@@ -843,10 +844,11 @@ export default function ServiceReportUI({
 
                     if (!isOverflowing) continue;
 
-                    // Critical guard:
-                    // If this page has only one section, do not move it.
-                    // Otherwise a too-tall section causes infinite page creation.
-                    if (page.sections.length <= 1) {
+                    const isLastPage = pageIndex === nextPages.length - 1;
+
+                    // Only stop if a single section overflows on the last page.
+                    // This prevents infinite page creation for one very tall section.
+                    if (page.sections.length <= 1 && isLastPage) {
                         continue;
                     }
 
@@ -856,9 +858,7 @@ export default function ServiceReportUI({
                     const nextPage = nextPages[pageIndex + 1];
 
                     if (nextPage) {
-                        if (!nextPage.sections.includes(movedSection)) {
-                            nextPage.sections.unshift(movedSection);
-                        }
+                        nextPage.sections.unshift(movedSection);
                     } else {
                         nextPages.push({
                             id: `page-${Date.now()}`,

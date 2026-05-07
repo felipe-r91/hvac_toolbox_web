@@ -116,6 +116,7 @@ type NormalizedServiceReport = {
     location: string;
     machineStatus: string;
     serviceResult: string;
+    machineReturnedToService?: string;
     vessel: {
         name: string;
         imo: string;
@@ -727,6 +728,7 @@ export default function ServiceReportUI({
         location: aiReport.location || sourceReport.machineLocation || "",
         machineStatus: aiReport.machineStatus || "Not provided",
         serviceResult: aiReport.serviceResult || "Service result not provided",
+        machineReturnedToService: sourceReport.machineReturnedToService || "",
 
         vessel: {
             name: sourceReport.vesselName || "—",

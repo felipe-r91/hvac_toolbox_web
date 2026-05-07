@@ -825,7 +825,7 @@ export default function ServiceReportUI({
 
                 let changed = false;
 
-                // 1. Remove empty trailing pages.
+                // Remove empty trailing pages first.
                 while (
                     nextPages.length > 1 &&
                     nextPages[nextPages.length - 1].sections.length === 0
@@ -834,13 +834,21 @@ export default function ServiceReportUI({
                     changed = true;
                 }
 
-                // 2. Push overflowing sections forward.
                 for (let pageIndex = 0; pageIndex < nextPages.length; pageIndex++) {
                     const page = nextPages[pageIndex];
                     const body = pageBodyRefs.current[page.id];
-                    const isOverflowing = body && body.scrollHeight > body.clientHeight + 2;
 
-                    if (!isOverflowing || page.sections.length === 0) continue;
+                    const isOverflowing =
+                        body && body.scrollHeight > body.clientHeight + 2;
+
+                    if (!isOverflowing) continue;
+
+                    // Critical guard:
+                    // If this page has only one section, do not move it.
+                    // Otherwise a too-tall section causes infinite page creation.
+                    if (page.sections.length <= 1) {
+                        continue;
+                    }
 
                     const movedSection = page.sections.pop();
                     if (!movedSection) continue;
@@ -848,10 +856,12 @@ export default function ServiceReportUI({
                     const nextPage = nextPages[pageIndex + 1];
 
                     if (nextPage) {
-                        nextPage.sections.unshift(movedSection);
+                        if (!nextPage.sections.includes(movedSection)) {
+                            nextPage.sections.unshift(movedSection);
+                        }
                     } else {
                         nextPages.push({
-                            id: `page-${nextPages.length + 1}`,
+                            id: `page-${Date.now()}`,
                             sections: [movedSection],
                         });
                     }
@@ -860,7 +870,7 @@ export default function ServiceReportUI({
                     break;
                 }
 
-                // 3. Remove empty trailing pages again after moving.
+                // Remove empty trailing pages again.
                 while (
                     nextPages.length > 1 &&
                     nextPages[nextPages.length - 1].sections.length === 0
@@ -871,7 +881,7 @@ export default function ServiceReportUI({
 
                 return changed ? nextPages : currentPages;
             });
-        }, 50);
+        }, 80);
 
         return () => window.clearTimeout(timeout);
     }, [pages, alarms, workConducted, recommendations]);

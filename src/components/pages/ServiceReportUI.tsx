@@ -353,14 +353,14 @@ function StatusPill({
 
 function getStatusTone(status?: string): Tone {
     const value = (status || "").toLowerCase();
-    console.log("Determining tone for status:", value);
 
     if (
         value.includes("not returned") ||
         value.includes("down") ||
         value.includes("offline") ||
         value.includes("non-operational") ||
-        value.includes("unavailable")
+        value.includes("unavailable") ||
+        value.includes("no")
     ) {
         return "red";
     }
@@ -380,6 +380,7 @@ function getStatusTone(status?: string): Tone {
         value.includes("online") ||
         value.includes("operational") ||
         value.includes("running") ||
+        value.includes("yes") ||
         value.includes("ok")
     ) {
         return "green";

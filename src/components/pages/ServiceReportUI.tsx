@@ -34,7 +34,9 @@ type SectionId =
     | "alarms"
     | "photos"
     | "workConducted"
+    | "workConductedContd"
     | "recommendations"
+    | "recommendationsContd"
     | "furtherAction"
     | "ehs"
     | "signatures";
@@ -783,6 +785,28 @@ export default function ServiceReportUI({
     const pageBodyRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
     const [totalPages, setTotalPages] = React.useState(0);
     const [isUploadingReport, setIsUploadingReport] = React.useState(false);
+    const [workConductedSplitIndex, setWorkConductedSplitIndex] = React.useState<number | null>(null);
+    const [recommendationsSplitIndex, setRecommendationsSplitIndex] = React.useState<number | null>(null);
+
+    const firstWorkConductedItems =
+        workConductedSplitIndex === null
+            ? workConducted
+            : workConducted.slice(0, workConductedSplitIndex);
+
+    const continuedWorkConductedItems =
+        workConductedSplitIndex === null
+            ? []
+            : workConducted.slice(workConductedSplitIndex);
+
+    const firstRecommendationItems =
+        recommendationsSplitIndex === null
+            ? recommendations
+            : recommendations.slice(0, recommendationsSplitIndex);
+
+    const continuedRecommendationItems =
+        recommendationsSplitIndex === null
+            ? []
+            : recommendations.slice(recommendationsSplitIndex);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -797,6 +821,8 @@ export default function ServiceReportUI({
         setWorkConducted(report.workConducted);
         setRecommendations(report.recommendations);
         setPages(initialPages);
+        setWorkConductedSplitIndex(null);
+        setRecommendationsSplitIndex(null);
     }, [aiReport, sourceReport]);
 
     React.useLayoutEffect(() => {
@@ -826,6 +852,26 @@ export default function ServiceReportUI({
 
                 let changed = false;
 
+                // Remove continuation sections if they became empty.
+                for (const page of nextPages) {
+                    const beforeLength = page.sections.length;
+                    page.sections = page.sections.filter((section) => {
+                        if (section === "workConductedContd") {
+                            return continuedWorkConductedItems.length > 0;
+                        }
+
+                        if (section === "recommendationsContd") {
+                            return continuedRecommendationItems.length > 0;
+                        }
+
+                        return true;
+                    });
+
+                    if (page.sections.length !== beforeLength) {
+                        changed = true;
+                    }
+                }
+
                 // Remove empty trailing pages first.
                 while (
                     nextPages.length > 1 &&
@@ -844,11 +890,70 @@ export default function ServiceReportUI({
 
                     if (!isOverflowing) continue;
 
-                    const isLastPage = pageIndex === nextPages.length - 1;
+                    // Special case: one long list section alone on the page.
+                    // Instead of creating infinite pages, split the list into a continued section.
+                    if (page.sections.length === 1) {
+                        const onlySection = page.sections[0];
 
-                    // Only stop if a single section overflows on the last page.
-                    // This prevents infinite page creation for one very tall section.
-                    if (page.sections.length <= 1 && isLastPage) {
+                        if (onlySection === "workConducted" && workConducted.length > 1) {
+                            const nextSplitIndex = Math.max(
+                                1,
+                                workConductedSplitIndex === null
+                                    ? workConducted.length - 1
+                                    : workConductedSplitIndex - 1
+                            );
+
+                            if (nextSplitIndex !== workConductedSplitIndex) {
+                                setWorkConductedSplitIndex(nextSplitIndex);
+                            }
+
+                            if (!nextPages.some((item) => item.sections.includes("workConductedContd"))) {
+                                const nextPage = nextPages[pageIndex + 1];
+
+                                if (nextPage) {
+                                    nextPage.sections.unshift("workConductedContd");
+                                } else {
+                                    nextPages.push({
+                                        id: `page-${Date.now()}`,
+                                        sections: ["workConductedContd"],
+                                    });
+                                }
+                            }
+
+                            changed = true;
+                            break;
+                        }
+
+                        if (onlySection === "recommendations" && recommendations.length > 1) {
+                            const nextSplitIndex = Math.max(
+                                1,
+                                recommendationsSplitIndex === null
+                                    ? recommendations.length - 1
+                                    : recommendationsSplitIndex - 1
+                            );
+
+                            if (nextSplitIndex !== recommendationsSplitIndex) {
+                                setRecommendationsSplitIndex(nextSplitIndex);
+                            }
+
+                            if (!nextPages.some((item) => item.sections.includes("recommendationsContd"))) {
+                                const nextPage = nextPages[pageIndex + 1];
+
+                                if (nextPage) {
+                                    nextPage.sections.unshift("recommendationsContd");
+                                } else {
+                                    nextPages.push({
+                                        id: `page-${Date.now()}`,
+                                        sections: ["recommendationsContd"],
+                                    });
+                                }
+                            }
+
+                            changed = true;
+                            break;
+                        }
+
+                        // Guard remains for all other single-section overflow cases.
                         continue;
                     }
 
@@ -884,7 +989,16 @@ export default function ServiceReportUI({
         }, 80);
 
         return () => window.clearTimeout(timeout);
-    }, [pages, alarms, workConducted, recommendations]);
+    }, [
+        pages,
+        alarms,
+        workConducted,
+        recommendations,
+        workConductedSplitIndex,
+        recommendationsSplitIndex,
+        continuedWorkConductedItems.length,
+        continuedRecommendationItems.length,
+    ]);
 
     function handleDragEnd(event: DragEndEvent) {
         if (!isEditing) return;
@@ -1098,9 +1212,7 @@ export default function ServiceReportUI({
                             isEditing ? (
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setWorkConducted((current) => [...current, "New work item"])
-                                    }
+                                    onClick={() => setWorkConducted((current) => [...current, "New work item"])}
                                     className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
                                 >
                                     Add work
@@ -1108,9 +1220,9 @@ export default function ServiceReportUI({
                             ) : null
                         }
                     >
-                        {workConducted.length > 0 ? (
+                        {firstWorkConductedItems.length > 0 ? (
                             <ol className="space-y-2">
-                                {workConducted.map((item, index) => (
+                                {firstWorkConductedItems.map((item, index) => (
                                     <NumberedCard
                                         key={`${item}-${index}`}
                                         item={item}
@@ -1130,46 +1242,64 @@ export default function ServiceReportUI({
                     </Section>
                 );
 
-            case "recommendations":
+            case "workConductedContd":
                 return (
-                    <Section
-                        icon={FaCheckCircle}
-                        title="Recommendations"
-                        right={
-                            isEditing ? (
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setRecommendations((current) => [...current, "New recommendation"])
-                                    }
-                                    className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
-                                >
-                                    Add recommendation
-                                </button>
-                            ) : null
-                        }
-                    >
-                        {recommendations.length > 0 ? (
+                    <Section icon={FaTools} title="Work Conducted Contd.">
+                        {continuedWorkConductedItems.length > 0 ? (
                             <ol className="space-y-2">
-                                {recommendations.map((item, index) => (
-                                    <NumberedCard
-                                        key={`${item}-${index}`}
-                                        item={item}
-                                        index={index}
-                                        isEditing={isEditing}
-                                        onDelete={() =>
-                                            setRecommendations((current) =>
-                                                current.filter((_, itemIndex) => itemIndex !== index)
-                                            )
-                                        }
-                                    />
-                                ))}
+                                {continuedWorkConductedItems.map((item, index) => {
+                                    const realIndex = (workConductedSplitIndex || 0) + index;
+
+                                    return (
+                                        <NumberedCard
+                                            key={`${item}-${realIndex}`}
+                                            item={item}
+                                            index={realIndex}
+                                            isEditing={isEditing}
+                                            onDelete={() =>
+                                                setWorkConducted((current) =>
+                                                    current.filter((_, itemIndex) => itemIndex !== realIndex)
+                                                )
+                                            }
+                                        />
+                                    );
+                                })}
                             </ol>
                         ) : (
-                            <p className="text-sm text-slate-500">No recommendations provided.</p>
+                            <p className="text-sm text-slate-500">No continued work items.</p>
                         )}
                     </Section>
                 );
+
+            case "recommendationsContd":
+                return (
+                    <Section icon={FaCheckCircle} title="Recommendations Contd.">
+                        {continuedRecommendationItems.length > 0 ? (
+                            <ol className="space-y-2">
+                                {continuedRecommendationItems.map((item, index) => {
+                                    const realIndex = (recommendationsSplitIndex || 0) + index;
+
+                                    return (
+                                        <NumberedCard
+                                            key={`${item}-${realIndex}`}
+                                            item={item}
+                                            index={realIndex}
+                                            isEditing={isEditing}
+                                            onDelete={() =>
+                                                setRecommendations((current) =>
+                                                    current.filter((_, itemIndex) => itemIndex !== realIndex)
+                                                )
+                                            }
+                                        />
+                                    );
+                                })}
+                            </ol>
+                        ) : (
+                            <p className="text-sm text-slate-500">No continued recommendations.</p>
+                        )}
+                    </Section>
+                );
+
 
             case "furtherAction":
                 return (

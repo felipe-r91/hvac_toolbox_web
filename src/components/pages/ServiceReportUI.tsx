@@ -600,6 +600,20 @@ function ReportHeader({
     hasActiveAlarm: boolean;
 }) {
 
+    function statusHelper(status?: string) {
+        const value = (status || "").toLowerCase();
+
+        if (value.includes("yes")) {
+            return "online";
+        }
+
+        if (value.includes("no")) {
+            return "down";
+        }
+
+        return "online";
+    }
+
     return (
         <header className="avoid-break overflow-hidden rounded-md border border-slate-300 bg-white">
             <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-end">
@@ -640,7 +654,7 @@ function ReportHeader({
                             isPrintPreview={isPrintPreview}
                             preservePrintStyle
                         >
-                            {report.machineReturnedToService?.toLowerCase() || "unknown"}
+                            {statusHelper(report.machineReturnedToService)}
                         </StatusPill>
 
                         <StatusPill

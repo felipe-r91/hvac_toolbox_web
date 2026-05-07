@@ -632,7 +632,7 @@ function ReportHeader({
                     </p>
                     <div className="flex flex-wrap gap-2">
                         <StatusPill
-                            tone={getStatusTone(report.machineStatus)}
+                            tone={getStatusTone(report.machineReturnedToService)}
                             isPrintPreview={isPrintPreview}
                             preservePrintStyle
                         >

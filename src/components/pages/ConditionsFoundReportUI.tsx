@@ -37,6 +37,7 @@ type SectionId =
   | "impact"
   | "rootCause"
   | "recommendations"
+  | "recommendationsContd"
   | "furtherAction"
   | "ehs"
   | "signatures";
@@ -312,9 +313,11 @@ function StatusPill({
       <span
         ref={pillRef}
         onClick={openMenu}
-        className={`inline-flex items-center border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${isPrintPreview ? "cursor-default" : "cursor-pointer"
-          } ${tones[selectedTone]} ${preservePrintStyle ? "" : "print:border-none print:bg-transparent"
-          }`}
+        className={`inline-flex items-center border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${
+          isPrintPreview ? "cursor-default" : "cursor-pointer"
+        } ${tones[selectedTone]} ${
+          preservePrintStyle ? "" : "print:border-none print:bg-transparent"
+        }`}
       >
         <EditableText>{children}</EditableText>
       </span>
@@ -542,8 +545,9 @@ function SwappableImage({
             inputRef.current?.click();
           }
         }}
-        className={`group relative h-full w-full overflow-hidden bg-slate-50 print:pointer-events-none ${isEditing ? "cursor-pointer" : "cursor-default"
-          }`}
+        className={`group relative h-full w-full overflow-hidden bg-slate-50 print:pointer-events-none ${
+          isEditing ? "cursor-pointer" : "cursor-default"
+        }`}
       >
         {imageUrl ? (
           <img src={imageUrl} alt={alt} className={className} />
@@ -755,11 +759,22 @@ export default function ConditionsFoundReportUI({
   const [recommendations, setRecommendations] = React.useState<string[]>(
     report.recommendations
   );
+  const [recommendationsSplitIndex, setRecommendationsSplitIndex] = React.useState<number | null>(null);
   const [pages, setPages] = React.useState<ReportPage[]>(initialPages);
   const reportRef = React.useRef<HTMLElement | null>(null);
   const pageBodyRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const [totalPages, setTotalPages] = React.useState(0);
   const [isUploadingReport, setIsUploadingReport] = React.useState(false);
+
+  const firstRecommendationItems =
+    recommendationsSplitIndex === null
+      ? recommendations
+      : recommendations.slice(0, recommendationsSplitIndex);
+
+  const continuedRecommendationItems =
+    recommendationsSplitIndex === null
+      ? []
+      : recommendations.slice(recommendationsSplitIndex);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -768,8 +783,18 @@ export default function ConditionsFoundReportUI({
   React.useEffect(() => {
     setAlarms(report.alarms);
     setRecommendations(report.recommendations);
+    setRecommendationsSplitIndex(null);
     setPages(initialPages);
   }, [aiReport, sourceReport]);
+
+  React.useEffect(() => {
+    if (
+      recommendationsSplitIndex !== null &&
+      recommendations.length <= recommendationsSplitIndex
+    ) {
+      setRecommendationsSplitIndex(null);
+    }
+  }, [recommendations.length, recommendationsSplitIndex]);
 
   React.useLayoutEffect(() => {
     if (!reportRef.current) return;
@@ -795,24 +820,91 @@ export default function ConditionsFoundReportUI({
           ...page,
           sections: [...page.sections],
         }));
+
         let changed = false;
+
+        // Remove continuation sections if they became empty.
+        for (const page of nextPages) {
+          const beforeLength = page.sections.length;
+          page.sections = page.sections.filter((section) => {
+            if (section === "recommendationsContd") {
+              return continuedRecommendationItems.length > 0;
+            }
+
+            return true;
+          });
+
+          if (page.sections.length !== beforeLength) {
+            changed = true;
+          }
+        }
+
+        // Remove empty trailing pages first.
+        while (
+          nextPages.length > 1 &&
+          nextPages[nextPages.length - 1].sections.length === 0
+        ) {
+          nextPages.pop();
+          changed = true;
+        }
 
         for (let pageIndex = 0; pageIndex < nextPages.length; pageIndex++) {
           const page = nextPages[pageIndex];
           const body = pageBodyRefs.current[page.id];
-          const isOverflowing = body && body.scrollHeight > body.clientHeight + 2;
 
-          if (!isOverflowing || page.sections.length === 0) continue;
+          const isOverflowing =
+            body && body.scrollHeight > body.clientHeight + 2;
+
+          if (!isOverflowing) continue;
+
+          // Special case: Recommendations alone is taller than one page.
+          // Split the list into Recommendations + Recommendations Contd. instead of creating infinite pages.
+          if (page.sections.length === 1) {
+            const onlySection = page.sections[0];
+
+            if (onlySection === "recommendations" && recommendations.length > 1) {
+              const nextSplitIndex = Math.max(
+                1,
+                recommendationsSplitIndex === null
+                  ? recommendations.length - 1
+                  : recommendationsSplitIndex - 1
+              );
+
+              if (nextSplitIndex !== recommendationsSplitIndex) {
+                setRecommendationsSplitIndex(nextSplitIndex);
+              }
+
+              if (!nextPages.some((item) => item.sections.includes("recommendationsContd"))) {
+                const nextPage = nextPages[pageIndex + 1];
+
+                if (nextPage) {
+                  nextPage.sections.unshift("recommendationsContd");
+                } else {
+                  nextPages.push({
+                    id: `page-${Date.now()}`,
+                    sections: ["recommendationsContd"],
+                  });
+                }
+              }
+
+              changed = true;
+              break;
+            }
+
+            // Guard remains for all other single-section overflow cases.
+            continue;
+          }
 
           const movedSection = page.sections.pop();
           if (!movedSection) continue;
 
           const nextPage = nextPages[pageIndex + 1];
+
           if (nextPage) {
             nextPage.sections.unshift(movedSection);
           } else {
             nextPages.push({
-              id: `page-${nextPages.length + 1}`,
+              id: `page-${Date.now()}`,
               sections: [movedSection],
             });
           }
@@ -821,12 +913,27 @@ export default function ConditionsFoundReportUI({
           break;
         }
 
+        // Remove empty trailing pages again.
+        while (
+          nextPages.length > 1 &&
+          nextPages[nextPages.length - 1].sections.length === 0
+        ) {
+          nextPages.pop();
+          changed = true;
+        }
+
         return changed ? nextPages : currentPages;
       });
-    }, 50);
+    }, 80);
 
     return () => window.clearTimeout(timeout);
-  }, [pages, alarms, recommendations]);
+  }, [
+    pages,
+    alarms,
+    recommendations,
+    recommendationsSplitIndex,
+    continuedRecommendationItems.length,
+  ]);
 
   function handleDragEnd(event: DragEndEvent) {
     if (!isEditing) return;
@@ -1059,9 +1166,9 @@ export default function ConditionsFoundReportUI({
               ) : null
             }
           >
-            {recommendations.length > 0 ? (
+            {firstRecommendationItems.length > 0 ? (
               <ol className="space-y-2">
-                {recommendations.map((item, index) => (
+                {firstRecommendationItems.map((item, index) => (
                   <RecommendationCard
                     key={`${item}-${index}`}
                     recommendation={item}
@@ -1077,6 +1184,35 @@ export default function ConditionsFoundReportUI({
               </ol>
             ) : (
               <p className="text-sm text-slate-500">No recommendations provided.</p>
+            )}
+          </Section>
+        );
+
+      case "recommendationsContd":
+        return (
+          <Section icon={FaCheckCircle} title="Recommendations Contd.">
+            {continuedRecommendationItems.length > 0 ? (
+              <ol className="space-y-2">
+                {continuedRecommendationItems.map((item, index) => {
+                  const realIndex = (recommendationsSplitIndex || 0) + index;
+
+                  return (
+                    <RecommendationCard
+                      key={`${item}-${realIndex}`}
+                      recommendation={item}
+                      index={realIndex}
+                      isEditing={isEditing}
+                      onDelete={() =>
+                        setRecommendations((current) =>
+                          current.filter((_, itemIndex) => itemIndex !== realIndex)
+                        )
+                      }
+                    />
+                  );
+                })}
+              </ol>
+            ) : (
+              <p className="text-sm text-slate-500">No continued recommendations.</p>
             )}
           </Section>
         );
@@ -1115,43 +1251,43 @@ export default function ConditionsFoundReportUI({
   }
 
   async function createReportPdfBlob(element: HTMLElement): Promise<Blob> {
-  const pages = Array.from(
-    element.querySelectorAll<HTMLElement>(".report-page")
-  );
+    const pages = Array.from(
+      element.querySelectorAll<HTMLElement>(".report-page")
+    );
 
-  if (pages.length === 0) {
-    throw new Error("No report pages found.");
-  }
-
-  const pdf = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-    compress: true,
-  });
-
-  for (let index = 0; index < pages.length; index++) {
-    const page = pages[index];
-
-    const canvas = await html2canvas(page, {
-      scale: 3,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      windowWidth: page.scrollWidth,
-      windowHeight: page.scrollHeight,
-    });
-
-    const imgData = canvas.toDataURL("image/png");
-
-    if (index > 0) {
-      pdf.addPage("a4", "portrait");
+    if (pages.length === 0) {
+      throw new Error("No report pages found.");
     }
 
-    pdf.addImage(imgData, "PNG", 0, 0, 210, 297);
-  }
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    });
 
-  return pdf.output("blob");
-}
+    for (let index = 0; index < pages.length; index++) {
+      const page = pages[index];
+
+      const canvas = await html2canvas(page, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        windowWidth: page.scrollWidth,
+        windowHeight: page.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+
+      if (index > 0) {
+        pdf.addPage("a4", "portrait");
+      }
+
+      pdf.addImage(imgData, "PNG", 0, 0, 210, 297);
+    }
+
+    return pdf.output("blob");
+  }
 
   async function handleUploadCustomerReport() {
     if (!reportRef.current || isUploadingReport) return;

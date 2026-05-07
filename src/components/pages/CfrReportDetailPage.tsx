@@ -297,7 +297,7 @@ export function CfrReportDetailPage() {
       setAiStep("Report generated successfully.");
 
       window.setTimeout(() => {
-        navigate(`/ai-generation/cfr/${report.id}`, {
+        navigate(`/ai-generation-service/cfr/${report.id}`, {
           state: {
             reportType: "cfr",
             sourceReport: report,

@@ -4,13 +4,14 @@ import { DashboardPage } from "./../components/pages/DashboardPage";
 import { ReportsPage } from "./../components/pages/ReportsPage";
 import { MachinesPage } from "./../components/pages/MachinesPage";
 import { VesselsPage } from "../components/pages/VesselsPage";
-import { AiGenerationPage } from "../components/pages/AiGenerationPage";
+import { AiGenerationService } from "../components/pages/AiGenerationService";
 import { InsightsPage } from "../components/pages/InsightsPage";
 import { MachineDetailPage } from "../components/pages/MachineDetailPage";
 import { VesselDetailPage } from "../components/pages/VesselDetailPage";
 import { CfrReportDetailPage } from "../components/pages/CfrReportDetailPage";
 import { CorrectiveReportDetailPage } from "../components/pages/CorrectiveReportDetailPage";
 import { HealthCheckReportDetailPage } from "../components/pages/HealthCheckReportDetailPage";
+import { AiGenerationPage } from "../components/pages/AiGenerationPage";
 
 export function AppRouter() {
   return (
@@ -23,13 +24,14 @@ export function AppRouter() {
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/machines" element={<MachinesPage />} />
           <Route path="/vessels" element={<VesselsPage />} />
-          <Route path="/ai-generation/:reportType/:reportId" element={<AiGenerationPage />} />
+          <Route path="/ai-generation-service/:reportType/:reportId" element={<AiGenerationService />} />
           <Route path="/insights" element={<InsightsPage />} />
           <Route path="/machines/:machineId" element={<MachineDetailPage />} />
           <Route path="/vessels/:vesselId" element={<VesselDetailPage />} />
           <Route path="/reports/:reportId" element={<HealthCheckReportDetailPage />} />
           <Route path="/corrective-reports/:reportId" element={<CorrectiveReportDetailPage />} />
           <Route path="/cfr-reports/:reportId" element={<CfrReportDetailPage />} />
+          <Route path="/ai-generation" element={<AiGenerationPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

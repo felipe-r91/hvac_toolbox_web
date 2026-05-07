@@ -207,7 +207,7 @@ export function CorrectiveReportDetailPage() {
       setAiStep("Service report generated successfully.");
 
       window.setTimeout(() => {
-        navigate(`/ai-generation/corrective/${report.id}`, {
+        navigate(`/ai-generation-service/corrective/${report.id}`, {
           state: {
             reportType: "corrective",
             sourceReport: report,

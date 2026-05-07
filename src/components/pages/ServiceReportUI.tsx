@@ -1270,7 +1270,46 @@ export default function ServiceReportUI({
                         )}
                     </Section>
                 );
-
+            case "recommendations":
+                return (
+                    <Section
+                        icon={FaCheckCircle}
+                        title="Recommendations"
+                        right={
+                            isEditing ? (
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setRecommendations((current) => [...current, "New recommendation"])
+                                    }
+                                    className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
+                                >
+                                    Add recommendation
+                                </button>
+                            ) : null
+                        }
+                    >
+                        {firstRecommendationItems.length > 0 ? (
+                            <ol className="space-y-2">
+                                {firstRecommendationItems.map((item, index) => (
+                                    <NumberedCard
+                                        key={`${item}-${index}`}
+                                        item={item}
+                                        index={index}
+                                        isEditing={isEditing}
+                                        onDelete={() =>
+                                            setRecommendations((current) =>
+                                                current.filter((_, itemIndex) => itemIndex !== index)
+                                            )
+                                        }
+                                    />
+                                ))}
+                            </ol>
+                        ) : (
+                            <p className="text-sm text-slate-500">No recommendations provided.</p>
+                        )}
+                    </Section>
+                );
             case "recommendationsContd":
                 return (
                     <Section icon={FaCheckCircle} title="Recommendations Contd.">

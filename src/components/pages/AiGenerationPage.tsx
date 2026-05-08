@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../../api/config";
 import {
   type DraftReportRow,
   type DraftReportType,
   generateAiReport,
   getAiGenerationDrafts,
 } from "../../api/aiGenerationApi";
+import type {
+  AiCustomerReport,
+  SourceCfrReport,
+} from "./ConditionsFoundReportUI";
+import type {
+  AiServiceReport,
+  SourceServiceReport,
+} from "./ServiceReportUI";
 
 function typeLabel(type: DraftReportType) {
   if (type === "cfr") {
@@ -47,6 +56,20 @@ function formatDate(value: string) {
     month: "short",
     day: "2-digit",
   });
+}
+
+async function getSourceReport<T>(type: DraftReportType, id: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}/api/reports/${type}/${id}`, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Unable to load source report. Status: ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
 }
 
 export function AiGenerationPage() {
@@ -101,16 +124,17 @@ export function AiGenerationPage() {
       setGeneratingId(draft.id);
       setError("");
 
-      const generatedReport = await generateAiReport(
-        draft.type,
-        draft.id
-      );
-
       if (draft.type === "cfr") {
-        navigate("/ai-generation-service/cfr/preview", {
+        const [sourceReport, aiReport] = await Promise.all([
+          getSourceReport<SourceCfrReport>("cfr", draft.id),
+          generateAiReport("cfr", draft.id) as Promise<AiCustomerReport>,
+        ]);
+
+        navigate(`/ai-generation-service/cfr/${draft.id}`, {
           state: {
-            report: generatedReport,
-            previewComponent: "ConditionsFoundReportUI",
+            reportType: "cfr",
+            sourceReport,
+            aiReport,
           },
         });
 
@@ -118,10 +142,16 @@ export function AiGenerationPage() {
       }
 
       if (draft.type === "corrective") {
-        navigate("/ai-generation-service/corrective/preview", {
+        const [sourceReport, aiReport] = await Promise.all([
+          getSourceReport<SourceServiceReport>("corrective", draft.id),
+          generateAiReport("corrective", draft.id) as Promise<AiServiceReport>,
+        ]);
+
+        navigate(`/ai-generation-service/corrective/${draft.id}`, {
           state: {
-            report: generatedReport,
-            previewComponent: "ServiceReportUI",
+            reportType: "corrective",
+            sourceReport,
+            aiReport,
           },
         });
       }
@@ -147,8 +177,8 @@ export function AiGenerationPage() {
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm text-slate-600">
-              Generate AI-powered customer reports from draft CFR,
-              Corrective, and Health Check reports.
+              Generate AI-powered customer reports from draft CFR, Corrective,
+              and Health Check reports.
             </p>
           </div>
         </header>

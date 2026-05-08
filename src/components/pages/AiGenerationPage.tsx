@@ -308,7 +308,7 @@ export function AiGenerationPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-slate-900">
+                            <div className="truncate text-sm text-slate-900">
                               {draft.machine || "—"}
                             </div>
                           </div>

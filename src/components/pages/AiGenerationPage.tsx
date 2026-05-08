@@ -284,7 +284,7 @@ export function AiGenerationPage() {
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">
                   Date
                 </th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-700">
+                <th className="px-6 py-4 text-center text-sm font-semibold text-slate-700">
                   Action
                 </th>
               </tr>
@@ -329,7 +329,7 @@ export function AiGenerationPage() {
                         {formatDate(draft.date)}
                       </td>
 
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-center">
                         <button
                           type="button"
                           onClick={() => handleGenerate(draft)}

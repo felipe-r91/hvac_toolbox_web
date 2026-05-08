@@ -20,12 +20,12 @@ function statusClasses(status?: string) {
   return "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
-function reportTypeClasses(type?: "health_check" | "corrective" | "cfr") {
+function reportTypeClasses(type?: "health_check" | "service_report" | "cfr") {
   if (type === "health_check") {
     return "bg-blue-100 text-blue-800";
   }
 
-  if (type === "corrective") {
+  if (type === "service_report") {
     return "bg-yellow-100 text-yellow-800";
   }
 
@@ -36,9 +36,9 @@ function reportTypeClasses(type?: "health_check" | "corrective" | "cfr") {
   return "bg-slate-100 text-slate-600";
 }
 
-function reportTypeLabel(type?: "health_check" | "corrective" | "cfr") {
+function reportTypeLabel(type?: "health_check" | "service_report" | "cfr") {
   if (type === "health_check") return "Health Check";
-  if (type === "corrective") return "Corrective";
+  if (type === "service_report") return "Corrective";
   if (type === "cfr") return "CFR";
   return "PDF Report";
 }
@@ -186,22 +186,6 @@ export function ReportsPage() {
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-600">
-              Status
-            </span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
-            >
-              <option value="all">All statuses</option>
-              <option value="online">Online</option>
-              <option value="down">Down</option>
-              <option value="unknown">Unknown</option>
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-600">
               Report type
             </span>
             <select
@@ -293,17 +277,7 @@ export function ReportsPage() {
                             .join(" · ") || "—"}
                         </div>
                       </td>
-
-                      <td className="px-6 py-4">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${statusClasses(
-                            report.machineStatus || "unknown"
-                          )}`}
-                        >
-                          {report.machineStatus || "unknown"}
-                        </span>
-                      </td>
-
+                      
                       <td className="px-6 py-4 text-sm text-slate-700">
                         {formatDate(report.reportDate || report.createdAt)}
                       </td>

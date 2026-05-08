@@ -20,7 +20,7 @@ export type CreateCustomerReportPayload = {
 export type CustomerReportResponse = {
   id: string;
   sourceReportId?: string;
-  sourceReportType?: "cfr" | "corrective" | "health_check";
+  sourceReportType?: "cfr" | "service_report" | "health_check";
   vesselId?: string;
   vesselName?: string;
   machineId?: string;

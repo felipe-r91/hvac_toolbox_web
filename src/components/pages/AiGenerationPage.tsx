@@ -284,7 +284,7 @@ export function AiGenerationPage() {
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">
                   Date
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-slate-700">
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">
                   Action
                 </th>
               </tr>
@@ -307,16 +307,9 @@ export function AiGenerationPage() {
 
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-                            <FaFileAlt />
-                          </div>
-
                           <div className="min-w-0">
                             <div className="truncate text-sm font-semibold text-slate-900">
                               {draft.machine || "—"}
-                            </div>
-                            <div className="truncate text-xs text-slate-500">
-                              Draft report
                             </div>
                           </div>
                         </div>

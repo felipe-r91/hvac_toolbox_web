@@ -9,6 +9,7 @@ import {
 type CustomerReport = CustomerReportResponse;
 
 
+
 function reportTypeClasses(type?: "health_check" | "service_report" | "cfr") {
   if (type === "health_check") {
     return "bg-blue-100 text-blue-800";
@@ -27,7 +28,7 @@ function reportTypeClasses(type?: "health_check" | "service_report" | "cfr") {
 
 function reportTypeLabel(type?: "health_check" | "service_report" | "cfr") {
   if (type === "health_check") return "Health Check";
-  if (type === "service_report") return "Corrective";
+  if (type === "service_report") return "Service Report";
   if (type === "cfr") return "CFR";
   return "PDF Report";
 }
@@ -53,7 +54,7 @@ export function ReportsPage() {
 
   const [search, setSearch] = useState("");
   const [vesselFilter, setVesselFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  
   const [reportTypeFilter, setReportTypeFilter] = useState("all");
 
   useEffect(() => {
@@ -101,15 +102,14 @@ export function ReportsPage() {
       const matchesVessel =
         vesselFilter === "all" || report.vesselName === vesselFilter;
 
-      const matchesStatus =
-        statusFilter === "all" || report.machineStatus === statusFilter;
+      
 
       const matchesReportType =
         reportTypeFilter === "all" || report.sourceReportType === reportTypeFilter;
 
-      return matchesSearch && matchesVessel && matchesStatus && matchesReportType;
+      return matchesSearch && matchesVessel && matchesReportType;
     });
-  }, [reports, search, vesselFilter, statusFilter, reportTypeFilter]);
+  }, [reports, search, vesselFilter, reportTypeFilter]);
 
   async function handleDownload(report: CustomerReport) {
     try {
@@ -142,7 +142,7 @@ export function ReportsPage() {
   return (
     <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
       <section className="sticky top-0 z-20 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-600">
               Search
@@ -173,6 +173,8 @@ export function ReportsPage() {
             </select>
           </label>
 
+          
+
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-600">
               Report type
@@ -200,7 +202,7 @@ export function ReportsPage() {
             onClick={() => {
               setSearch("");
               setVesselFilter("all");
-              setStatusFilter("all");
+              
               setReportTypeFilter("all");
             }}
             className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
@@ -218,10 +220,10 @@ export function ReportsPage() {
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Report</th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Vessel</th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Machine</th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Status</th>
+                
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Date</th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Type</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-slate-700">Download</th>
+                <th className="w-fit rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">Download</th>
               </tr>
             </thead>
 
@@ -266,7 +268,9 @@ export function ReportsPage() {
                             .join(" · ") || "—"}
                         </div>
                       </td>
+
                       
+
                       <td className="px-6 py-4 text-sm text-slate-700">
                         {formatDate(report.reportDate || report.createdAt)}
                       </td>
@@ -302,7 +306,7 @@ export function ReportsPage() {
               ) : (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={6}
                     className="px-6 py-10 text-center text-sm text-slate-500"
                   >
                     No reports found for the current filters.

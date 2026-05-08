@@ -400,7 +400,7 @@ export function MachineDetailPage() {
                           onClick={() => setIsTypeMenuOpen((prev) => !prev)}
                           className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-100"
                         >
-                          <span>Type</span>
+                          <span className="uppercase">Type</span>
 
                           <span className="text-[10px] text-slate-400">
                             {isTypeMenuOpen ? "▲" : "▼"}

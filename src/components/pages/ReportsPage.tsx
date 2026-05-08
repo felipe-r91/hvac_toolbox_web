@@ -1,31 +1,47 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaDownload, FaFilePdf, FaSpinner } from "react-icons/fa";
 import {
-  FaDownload,
-  FaFilePdf,
-  FaRedo,
-  FaSearch,
-  FaSpinner,
-  FaExclamationTriangle,
-} from "react-icons/fa";
-import { API_BASE_URL } from "../../api/config";
+  downloadCustomerReportPdf,
+  findCustomerReports,
+  type CustomerReportResponse,
+} from "../../api/customerReportApi";
 
-type CustomerReport = {
-  id: string;
-  sourceReportId?: string;
-  sourceReportType?: string;
-  vesselId?: string;
-  vesselName?: string;
-  machineId?: string;
-  machineTag?: string;
-  machineModel?: string;
-  machineType?: string;
-  machineStatus?: string;
-  title?: string;
-  reportDate?: string;
-  pdfFilename?: string;
-  createdAt?: string;
-};
+type CustomerReport = CustomerReportResponse;
 
+function statusClasses(status?: string) {
+  if (status === "online") {
+    return "bg-green-100 text-green-800 ring-green-200";
+  }
+
+  if (status === "down") {
+    return "bg-red-100 text-red-800 ring-red-200";
+  }
+
+  return "bg-slate-100 text-slate-700 ring-slate-200";
+}
+
+function reportTypeClasses(type?: "health_check" | "corrective" | "cfr") {
+  if (type === "health_check") {
+    return "bg-blue-100 text-blue-800";
+  }
+
+  if (type === "corrective") {
+    return "bg-yellow-100 text-yellow-800";
+  }
+
+  if (type === "cfr") {
+    return "bg-purple-100 text-purple-800";
+  }
+
+  return "bg-slate-100 text-slate-600";
+}
+
+function reportTypeLabel(type?: "health_check" | "corrective" | "cfr") {
+  if (type === "health_check") return "Health Check";
+  if (type === "corrective") return "Corrective";
+  if (type === "cfr") return "CFR";
+  return "PDF Report";
+}
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -33,13 +49,7 @@ function formatDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
 
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  return date.toLocaleString();
 }
 
 function getDisplayName(report: CustomerReport) {
@@ -48,229 +58,298 @@ function getDisplayName(report: CustomerReport) {
 
 export function ReportsPage() {
   const [reports, setReports] = useState<CustomerReport[]>([]);
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const filteredReports = useMemo(() => {
-    const value = search.trim().toLowerCase();
-    if (!value) return reports;
-
-    return reports.filter((report) => {
-      const searchableText = [
-        report.id,
-        report.title,
-        report.pdfFilename,
-        report.sourceReportType,
-        report.vesselName,
-        report.machineTag,
-        report.machineModel,
-        report.machineType,
-        report.machineStatus,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return searchableText.includes(value);
-    });
-  }, [reports, search]);
-
-  async function loadReports() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(`${API_BASE_URL}/api/customer-reports`, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Unable to load saved reports.");
-      }
-
-      const data = (await response.json()) as CustomerReport[];
-      setReports(data ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unexpected error loading reports.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function downloadReport(report: CustomerReport) {
-    try {
-      setDownloadingKey(report.id);
-
-      const response = await fetch(
-        `${API_BASE_URL}/api/customer-reports/${encodeURIComponent(report.id)}/download-url`,
-        {
-          method: "GET",
-          headers: {
-            Accept: "text/plain",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Unable to generate download link.");
-      }
-
-      const downloadUrl = await response.text();
-
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = getDisplayName(report);
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Unexpected error downloading report.");
-    } finally {
-      setDownloadingKey(null);
-    }
-  }
+  const [search, setSearch] = useState("");
+  const [vesselFilter, setVesselFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [reportTypeFilter, setReportTypeFilter] = useState("all");
 
   useEffect(() => {
-    void loadReports();
+    const run = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await findCustomerReports();
+        setReports(data);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load reports.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    run();
   }, []);
 
+  const vesselOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        reports
+          .map((report) => report.vesselName)
+          .filter((vesselName): vesselName is string => Boolean(vesselName))
+      )
+    ).sort();
+  }, [reports]);
+
+  const filteredReports = useMemo(() => {
+    return reports.filter((report) => {
+      const term = search.trim().toLowerCase();
+
+      const matchesSearch =
+        term === "" ||
+        report.title?.toLowerCase().includes(term) ||
+        report.pdfFilename?.toLowerCase().includes(term) ||
+        report.vesselName?.toLowerCase().includes(term) ||
+        report.machineTag?.toLowerCase().includes(term) ||
+        report.machineModel?.toLowerCase().includes(term) ||
+        report.machineType?.toLowerCase().includes(term);
+
+      const matchesVessel =
+        vesselFilter === "all" || report.vesselName === vesselFilter;
+
+      const matchesStatus =
+        statusFilter === "all" || report.machineStatus === statusFilter;
+
+      const matchesReportType =
+        reportTypeFilter === "all" || report.sourceReportType === reportTypeFilter;
+
+      return matchesSearch && matchesVessel && matchesStatus && matchesReportType;
+    });
+  }, [reports, search, vesselFilter, statusFilter, reportTypeFilter]);
+
+  async function handleDownload(report: CustomerReport) {
+    try {
+      setDownloadingId(report.id);
+      await downloadCustomerReportPdf(report.id, getDisplayName(report));
+    } catch (err) {
+      console.error(err);
+      window.alert("Failed to download report.");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-sm text-slate-500">Loading reports...</p>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-sm text-red-600">{error}</p>
+      </section>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <header className="border border-slate-200 bg-white px-5 py-5 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">
-                Customer Reports
-              </p>
-              <h1 className="mt-1 text-2xl font-bold text-slate-950">Saved Reports</h1>
-              <p className="mt-1 max-w-2xl text-sm text-slate-600">
-                Download PDF reports stored in the R2 bucket.
-              </p>
-            </div>
+    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
+      <section className="sticky top-0 z-20 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
+              Search
+            </span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Report, vessel, machine..."
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
+            />
+          </label>
 
-            <button
-              type="button"
-              onClick={loadReports}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
+              Vessel
+            </span>
+            <select
+              value={vesselFilter}
+              onChange={(e) => setVesselFilter(e.target.value)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
             >
-              {loading ? <FaSpinner className="animate-spin" /> : <FaRedo />}
-              Refresh
-            </button>
-          </div>
-        </header>
+              <option value="all">All vessels</option>
+              {vesselOptions.map((vessel) => (
+                <option key={vessel} value={vessel}>
+                  {vessel}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <section className="border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="relative w-full md:max-w-md">
-              <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by report, customer, vessel..."
-                className="w-full border border-slate-300 py-2 pl-10 pr-3 text-sm outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
-              />
-            </div>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
+              Status
+            </span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
+            >
+              <option value="all">All statuses</option>
+              <option value="online">Online</option>
+              <option value="down">Down</option>
+              <option value="unknown">Unknown</option>
+            </select>
+          </label>
 
-            <p className="text-sm text-slate-500">
-              {filteredReports.length} of {reports.length} reports
-            </p>
-          </div>
-        </section>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
+              Report type
+            </span>
+            <select
+              value={reportTypeFilter}
+              onChange={(e) => setReportTypeFilter(e.target.value)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
+            >
+              <option value="all">All report types</option>
+              <option value="health_check">Health Check</option>
+              <option value="corrective">Corrective</option>
+              <option value="cfr">CFR</option>
+            </select>
+          </label>
+        </div>
 
-        {error && (
-          <section className="flex items-start gap-3 border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-            <FaExclamationTriangle className="mt-0.5 shrink-0" />
-            <div>
-              <p className="font-semibold">Could not load reports</p>
-              <p>{error}</p>
-            </div>
-          </section>
-        )}
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            Showing {filteredReports.length} report{filteredReports.length === 1 ? "" : "s"}
+          </p>
 
-        <section className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-          {loading ? (
-            <div className="flex min-h-64 items-center justify-center gap-3 text-sm text-slate-500">
-              <FaSpinner className="animate-spin" />
-              Loading reports...
-            </div>
-          ) : filteredReports.length === 0 ? (
-            <div className="flex min-h-64 flex-col items-center justify-center px-4 text-center">
-              <FaFilePdf className="text-4xl text-slate-300" />
-              <h2 className="mt-3 text-base font-semibold text-slate-800">No reports found</h2>
-              <p className="mt-1 max-w-md text-sm text-slate-500">
-                Saved PDF reports will appear here after they are uploaded to the R2 bucket.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3">Report</th>
-                    <th className="px-4 py-3">Customer / Vessel</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Updated</th>
-                    <th className="px-4 py-3">Size</th>
-                    <th className="px-4 py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {filteredReports.map((report) => {
-                    const isDownloading = downloadingKey === report.id;
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setVesselFilter("all");
+              setStatusFilter("all");
+              setReportTypeFilter("all");
+            }}
+            className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
+          >
+            Clear filters
+          </button>
+        </div>
+      </section>
 
-                    return (
-                      <tr key={report.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center bg-red-50 text-red-600">
-                              <FaFilePdf />
+      <section className="min-h-0 flex-1 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="h-full overflow-auto">
+          <table className="min-w-full border-collapse">
+            <thead className="sticky top-0 z-10 bg-slate-50">
+              <tr className="text-left">
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Report</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Vessel</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Machine</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Status</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Date</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Type</th>
+                <th className="px-6 py-4 text-right text-sm font-semibold text-slate-700">Download</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredReports.length > 0 ? (
+                filteredReports.map((report) => {
+                  const isDownloading = downloadingId === report.id;
+
+                  return (
+                    <tr
+                      key={report.id}
+                      className="border-t border-slate-200 hover:bg-slate-50"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-700">
+                            <FaFilePdf />
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-slate-900">
+                              {report.title || getDisplayName(report)}
                             </div>
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold text-slate-900">
-                                {getDisplayName(report)}
-                              </p>
-                              <p className="truncate text-xs text-slate-500">{report.title || report.id}</p>
+                            <div className="truncate text-xs text-slate-500">
+                              {report.pdfFilename || "PDF file"}
                             </div>
                           </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        <td className="px-4 py-3 text-slate-700">
-                          <p className="font-medium">{report.vesselName || "—"}</p>
-                          <p className="text-xs text-slate-500">{report.machineTag || report.machineModel || "—"}</p>
-                        </td>
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        {report.vesselName || "—"}
+                      </td>
 
-                        <td className="px-4 py-3 text-slate-600">{report.sourceReportType || "PDF Report"}</td>
-                        <td className="px-4 py-3 text-slate-600">{formatDate(report.reportDate || report.createdAt)}</td>
-                        <td className="px-4 py-3 text-slate-600">—</td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-slate-900">
+                          {report.machineTag || "—"}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {[report.machineType, report.machineModel]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </div>
+                      </td>
 
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => downloadReport(report)}
-                            disabled={isDownloading}
-                            className="inline-flex items-center justify-center gap-2 bg-blue-800 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-70"
-                          >
-                            {isDownloading ? <FaSpinner className="animate-spin" /> : <FaDownload />}
-                            Download
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${statusClasses(
+                            report.machineStatus || "unknown"
+                          )}`}
+                        >
+                          {report.machineStatus || "unknown"}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        {formatDate(report.reportDate || report.createdAt)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${reportTypeClasses(
+                            report.sourceReportType
+                          )}`}
+                        >
+                          {reportTypeLabel(report.sourceReportType)}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(report)}
+                          disabled={isDownloading}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isDownloading ? (
+                            <FaSpinner className="animate-spin" />
+                          ) : (
+                            <FaDownload />
+                          )}
+                          {isDownloading ? "Preparing..." : "Download"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-6 py-10 text-center text-sm text-slate-500"
+                  >
+                    No reports found for the current filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
   );
 }

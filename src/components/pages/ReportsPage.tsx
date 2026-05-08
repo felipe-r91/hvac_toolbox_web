@@ -8,17 +8,6 @@ import {
 
 type CustomerReport = CustomerReportResponse;
 
-function statusClasses(status?: string) {
-  if (status === "online") {
-    return "bg-green-100 text-green-800 ring-green-200";
-  }
-
-  if (status === "down") {
-    return "bg-red-100 text-red-800 ring-red-200";
-  }
-
-  return "bg-slate-100 text-slate-700 ring-slate-200";
-}
 
 function reportTypeClasses(type?: "health_check" | "service_report" | "cfr") {
   if (type === "health_check") {

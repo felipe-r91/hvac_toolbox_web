@@ -223,7 +223,7 @@ export function ReportsPage() {
                 
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Date</th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">Type</th>
-                <th className="w-fit rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">Download</th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Download</th>
               </tr>
             </thead>
 
@@ -290,7 +290,7 @@ export function ReportsPage() {
                           type="button"
                           onClick={() => handleDownload(report)}
                           disabled={isDownloading}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex items-center justify-center gap-2 w-fit rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isDownloading ? (
                             <FaSpinner className="animate-spin" />

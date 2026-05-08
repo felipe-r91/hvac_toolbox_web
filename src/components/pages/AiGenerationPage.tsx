@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaFileAlt, FaMagic, FaSpinner } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../api/config";
 import {
@@ -17,45 +18,24 @@ import type {
 } from "./ServiceReportUI";
 
 function typeLabel(type: DraftReportType) {
-  if (type === "cfr") {
-    return "CFR";
-  }
-
-  if (type === "corrective") {
-    return "Corrective";
-  }
-
+  if (type === "cfr") return "CFR";
+  if (type === "corrective") return "Corrective";
   return "Health Check";
 }
 
 function typeClasses(type: DraftReportType) {
-  if (type === "cfr") {
-    return "bg-blue-100 text-blue-800";
-  }
-
-  if (type === "corrective") {
-    return "bg-amber-100 text-amber-800";
-  }
-
-  return "bg-green-100 text-green-800";
+  if (type === "cfr") return "bg-purple-100 text-purple-800";
+  if (type === "corrective") return "bg-yellow-100 text-yellow-800";
+  return "bg-blue-100 text-blue-800";
 }
 
-function formatDate(value: string) {
-  if (!value) {
-    return "Not informed";
-  }
+function formatDate(value?: string) {
+  if (!value) return "—";
 
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
 
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  });
+  return date.toLocaleString();
 }
 
 async function getSourceReport<T>(type: DraftReportType, id: string): Promise<T> {
@@ -80,7 +60,9 @@ export function AiGenerationPage() {
   const [error, setError] = useState("");
   const [generatingId, setGeneratingId] = useState<string | null>(null);
 
-  const hasDrafts = useMemo(() => drafts.length > 0, [drafts]);
+  const [search, setSearch] = useState("");
+  const [vesselFilter, setVesselFilter] = useState("all");
+  const [reportTypeFilter, setReportTypeFilter] = useState("all");
 
   useEffect(() => {
     let active = true;
@@ -99,7 +81,7 @@ export function AiGenerationPage() {
         console.error(err);
 
         if (active) {
-          setError("Unable to load draft reports.");
+          setError("Failed to load draft reports.");
         }
       } finally {
         if (active) {
@@ -114,6 +96,36 @@ export function AiGenerationPage() {
       active = false;
     };
   }, []);
+
+  const vesselOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        drafts
+          .map((draft) => draft.vessel)
+          .filter((vessel): vessel is string => Boolean(vessel && vessel !== "Not informed"))
+      )
+    ).sort();
+  }, [drafts]);
+
+  const filteredDrafts = useMemo(() => {
+    return drafts.filter((draft) => {
+      const term = search.trim().toLowerCase();
+
+      const matchesSearch =
+        term === "" ||
+        draft.vessel.toLowerCase().includes(term) ||
+        draft.machine.toLowerCase().includes(term) ||
+        draft.type.toLowerCase().includes(term);
+
+      const matchesVessel =
+        vesselFilter === "all" || draft.vessel === vesselFilter;
+
+      const matchesReportType =
+        reportTypeFilter === "all" || draft.type === reportTypeFilter;
+
+      return matchesSearch && matchesVessel && matchesReportType;
+    });
+  }, [drafts, search, vesselFilter, reportTypeFilter]);
 
   async function handleGenerate(draft: DraftReportRow) {
     if (draft.type === "preventive") {
@@ -157,135 +169,209 @@ export function AiGenerationPage() {
       }
     } catch (err) {
       console.error(err);
-      setError("Unable to generate AI report.");
+      setError("Failed to generate AI report.");
     } finally {
       setGeneratingId(null);
     }
   }
 
+  if (loading) {
+    return (
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-sm text-slate-500">Loading draft reports...</p>
+      </section>
+    );
+  }
+
+  if (error && drafts.length === 0) {
+    return (
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-sm text-red-600">{error}</p>
+      </section>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">
-              AI Reports
-            </p>
+    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
+      <section className="sticky top-0 z-20 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
+              Search
+            </span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Vessel, machine, report type..."
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
+            />
+          </label>
 
-            <h1 className="mt-1 text-2xl font-bold text-slate-900">
-              AI Generation
-            </h1>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
+              Vessel
+            </span>
+            <select
+              value={vesselFilter}
+              onChange={(e) => setVesselFilter(e.target.value)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
+            >
+              <option value="all">All vessels</option>
+              {vesselOptions.map((vessel) => (
+                <option key={vessel} value={vessel}>
+                  {vessel}
+                </option>
+              ))}
+            </select>
+          </label>
 
-            <p className="mt-2 max-w-3xl text-sm text-slate-600">
-              Generate AI-powered customer reports from draft CFR, Corrective,
-              and Health Check reports.
-            </p>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
+              Report type
+            </span>
+            <select
+              value={reportTypeFilter}
+              onChange={(e) => setReportTypeFilter(e.target.value)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
+            >
+              <option value="all">All report types</option>
+              <option value="preventive">Health Check</option>
+              <option value="corrective">Corrective</option>
+              <option value="cfr">CFR</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            Showing {filteredDrafts.length} draft{filteredDrafts.length === 1 ? "" : "s"}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setVesselFilter("all");
+              setReportTypeFilter("all");
+            }}
+            className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
+          >
+            Clear filters
+          </button>
+        </div>
+
+        {error && (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
           </div>
-        </header>
+        )}
+      </section>
 
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-base font-semibold text-slate-900">
-              Draft Reports
-            </h2>
-          </div>
+      <section className="min-h-0 flex-1 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="h-full overflow-auto">
+          <table className="min-w-full border-collapse">
+            <thead className="sticky top-0 z-10 bg-slate-50">
+              <tr className="text-left">
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">
+                  Vessel
+                </th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">
+                  Machine
+                </th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">
+                  Type
+                </th>
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">
+                  Date
+                </th>
+                <th className="px-6 py-4 text-right text-sm font-semibold text-slate-700">
+                  Action
+                </th>
+              </tr>
+            </thead>
 
-          {error && (
-            <div className="m-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
+            <tbody>
+              {filteredDrafts.length > 0 ? (
+                filteredDrafts.map((draft) => {
+                  const isPreventive = draft.type === "preventive";
+                  const isGenerating = generatingId === draft.id;
 
-          {loading ? (
-            <div className="p-8 text-center text-sm text-slate-500">
-              Loading draft reports...
-            </div>
-          ) : !hasDrafts ? (
-            <div className="p-8 text-center text-sm text-slate-500">
-              No draft reports found.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-100">
-                  <tr>
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      Vessel
-                    </th>
+                  return (
+                    <tr
+                      key={`${draft.type}-${draft.id}`}
+                      className="border-t border-slate-200 hover:bg-slate-50"
+                    >
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        {draft.vessel || "—"}
+                      </td>
 
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      Machine
-                    </th>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                            <FaFileAlt />
+                          </div>
 
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      Type
-                    </th>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-slate-900">
+                              {draft.machine || "—"}
+                            </div>
+                            <div className="truncate text-xs text-slate-500">
+                              Draft report
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      Date
-                    </th>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${typeClasses(
+                            draft.type
+                          )}`}
+                        >
+                          {typeLabel(draft.type)}
+                        </span>
+                      </td>
 
-                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        {formatDate(draft.date)}
+                      </td>
 
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {drafts.map((draft) => {
-                    const isPreventive = draft.type === "preventive";
-                    const isGenerating = generatingId === draft.id;
-
-                    return (
-                      <tr
-                        key={`${draft.type}-${draft.id}`}
-                        className="transition hover:bg-slate-50"
-                      >
-                        <td className="whitespace-nowrap px-5 py-4 text-sm font-medium text-slate-900">
-                          {draft.vessel}
-                        </td>
-
-                        <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
-                          {draft.machine}
-                        </td>
-
-                        <td className="whitespace-nowrap px-5 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${typeClasses(
-                              draft.type
-                            )}`}
-                          >
-                            {typeLabel(draft.type)}
-                          </span>
-                        </td>
-
-                        <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
-                          {formatDate(draft.date)}
-                        </td>
-
-                        <td className="whitespace-nowrap px-5 py-4 text-right">
-                          <button
-                            type="button"
-                            disabled={isPreventive || isGenerating}
-                            onClick={() => handleGenerate(draft)}
-                            className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
-                          >
-                            {isPreventive
-                              ? "Coming Soon"
-                              : isGenerating
-                              ? "Generating..."
-                              : "Generate with AI"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleGenerate(draft)}
+                          disabled={isPreventive || isGenerating}
+                          className="inline-flex w-fit items-center justify-center gap-2 rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isGenerating ? (
+                            <FaSpinner className="animate-spin" />
+                          ) : (
+                            <FaMagic />
+                          )}
+                          {isPreventive
+                            ? "Coming soon"
+                            : isGenerating
+                            ? "Generating..."
+                            : "Generate AI"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-6 py-10 text-center text-sm text-slate-500"
+                  >
+                    No draft reports found for the current filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
   );
 }

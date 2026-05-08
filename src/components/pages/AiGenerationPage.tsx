@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FaFileAlt, FaMagic, FaSpinner } from "react-icons/fa";
+import { FaMagic, FaSpinner } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../api/config";
 import {

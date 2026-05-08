@@ -82,7 +82,7 @@ export function ReportsPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_BASE_URL}/customer-reports`, {
+      const response = await fetch(`${API_BASE_URL}/api/customer-reports`, {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -107,7 +107,7 @@ export function ReportsPage() {
       setDownloadingKey(report.id);
 
       const response = await fetch(
-        `${API_BASE_URL}/customer-reports/${encodeURIComponent(report.id)}/download-url`,
+        `${API_BASE_URL}/api/customer-reports/${encodeURIComponent(report.id)}/download-url`,
         {
           method: "GET",
           headers: {

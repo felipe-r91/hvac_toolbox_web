@@ -1,4 +1,9 @@
-import type { CfrDraftDetail, CorrectiveReportDetail, PreventiveReportDetail } from "../types/report";
+import type {
+  CfrDraftDetail,
+  CorrectiveReportDetail,
+  DailyReportDetail,
+  PreventiveReportDetail,
+} from "../types/report";
 import { API_BASE_URL } from "./config";
 
 export async function getHealthCheckReportById(id: string): Promise<PreventiveReportDetail> {
@@ -29,6 +34,17 @@ export async function getCfrReportById(id: string): Promise<CfrDraftDetail> {
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Failed to load CFR report ${id}: ${text}`);
+  }
+
+  return response.json();
+}
+
+export async function getDailyReportById(id: string): Promise<DailyReportDetail> {
+  const response = await fetch(`${API_BASE_URL}/api/reports/daily/${id}`);
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to load daily report ${id}: ${text}`);
   }
 
   return response.json();

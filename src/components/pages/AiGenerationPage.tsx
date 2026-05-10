@@ -16,16 +16,22 @@ import type {
   AiServiceReport,
   SourceServiceReport,
 } from "./ServiceReportUI";
+import type {
+  AiDailyReport,
+  SourceDailyReport,
+} from "./DailyReportUI";
 
 function typeLabel(type: DraftReportType) {
   if (type === "cfr") return "CFR";
   if (type === "corrective") return "Corrective";
+  if (type === "daily") return "Daily Report";
   return "Health Check";
 }
 
 function typeClasses(type: DraftReportType) {
   if (type === "cfr") return "bg-purple-100 text-purple-800";
   if (type === "corrective") return "bg-yellow-100 text-yellow-800";
+  if (type === "daily") return "bg-emerald-100 text-emerald-800";
   return "bg-blue-100 text-blue-800";
 }
 
@@ -167,6 +173,21 @@ export function AiGenerationPage() {
           },
         });
       }
+
+      if (draft.type === "daily") {
+        const [sourceReport, aiReport] = await Promise.all([
+          getSourceReport<SourceDailyReport>("daily", draft.id),
+          generateAiReport("daily", draft.id) as Promise<AiDailyReport>,
+        ]);
+
+        navigate(`/ai-generation-service/daily/${draft.id}`, {
+          state: {
+            reportType: "daily",
+            sourceReport,
+            aiReport,
+          },
+        });
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to generate AI report.");
@@ -237,6 +258,7 @@ export function AiGenerationPage() {
               <option value="all">All report types</option>
               <option value="preventive">Health Check</option>
               <option value="corrective">Corrective</option>
+              <option value="daily">Daily Report</option>
               <option value="cfr">CFR</option>
             </select>
           </label>

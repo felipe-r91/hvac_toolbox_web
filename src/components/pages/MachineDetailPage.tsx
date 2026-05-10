@@ -5,7 +5,7 @@ import {
   getMachineTimeline,
   type MachineTimelineItem,
 } from "../../api/machineDetailApi";
-import type { OfficeMachineSummary } from "../../types/machine";
+import type { OfficeMachineSummary, OfficeReportCategory } from "../../types/machine";
 
 function statusClasses(status: "online" | "down" | "unknown") {
   return status === "online"
@@ -15,7 +15,7 @@ function statusClasses(status: "online" | "down" | "unknown") {
       : "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
-function reportTypeClasses(type: "health_check" | "corrective" | "cfr") {
+function reportTypeClasses(type: OfficeReportCategory) {
   if (type === "health_check") {
     return "bg-blue-100 text-blue-800";
   }
@@ -24,12 +24,17 @@ function reportTypeClasses(type: "health_check" | "corrective" | "cfr") {
     return "bg-yellow-100 text-yellow-800";
   }
 
-  return "bg-purple-100 text-purple-800";
+  if (type === "cfr") {
+    return "bg-purple-100 text-purple-800";
+  }
+
+  return "bg-emerald-100 text-emerald-800";
 }
 
-function reportTypeLabel(type: "health_check" | "corrective" | "cfr") {
+function reportTypeLabel(type: OfficeReportCategory) {
   if (type === "health_check") return "Health Check";
   if (type === "corrective") return "Corrective";
+  if (type === "daily") return "Daily Report";
   return "CFR";
 }
 
@@ -78,6 +83,7 @@ function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem
   const healthChecks = items.filter((item) => item.reportCategory === "health_check");
   const corrective = items.filter((item) => item.reportCategory === "corrective");
   const cfr = items.filter((item) => item.reportCategory === "cfr");
+  const daily = items.filter((item) => item.reportCategory === "daily");
 
   const correctiveBySourcePreventiveId = new Map<string, MachineTimelineItem>();
   const correctiveById = new Map(corrective.map((item) => [item.id, item]));
@@ -134,6 +140,14 @@ function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem
     });
   });
 
+  daily.forEach((dailyItem) => {
+    merged.push({
+      kind: "single",
+      item: dailyItem,
+      date: dailyItem.date,
+    });
+  });
+
   return merged.sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -148,6 +162,10 @@ function getReportLink(item: MachineTimelineItem) {
     return `/corrective-reports/${item.id}`;
   }
 
+  if (item.reportCategory === "daily") {
+    return `/daily-reports/${item.id}`;
+  }
+
   return `/cfr-reports/${item.id}`;
 }
 
@@ -158,6 +176,10 @@ function getReportLinkLabel(item: MachineTimelineItem) {
 
   if (item.reportCategory === "corrective") {
     return "Open corrective";
+  }
+
+  if (item.reportCategory === "daily") {
+    return "Open daily report";
   }
 
   return "Open CFR";
@@ -171,7 +193,7 @@ export function MachineDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dateSortDirection, setDateSortDirection] = useState<"desc" | "asc">("desc");
-  const [typeFilter, setTypeFilter] = useState<"all" | "health_check" | "corrective" | "cfr">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | OfficeReportCategory>("all");
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const [failureFilter, setFailureFilter] = useState<string | null>(null);
 
@@ -248,7 +270,9 @@ export function MachineDetailPage() {
     timeline
       .filter(
         (item) =>
-          item.reportCategory === "corrective" || item.reportCategory === "cfr"
+          item.reportCategory === "corrective" ||
+          item.reportCategory === "cfr" ||
+          item.reportCategory === "daily"
       )
       .forEach((item) => {
         const label = buildRecurringFailureLabel(item);
@@ -322,6 +346,7 @@ export function MachineDetailPage() {
               <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
                 HC: {machine.preventiveReportCount} · COR:{" "}
                 {machine.correctiveDraftCount} · CFR: {machine.cfrDraftCount}
+                {machine.dailyDraftCount !== undefined ? ` · Daily: ${machine.dailyDraftCount}` : ""}
               </div>
             </div>
           </div>
@@ -458,6 +483,17 @@ export function MachineDetailPage() {
                             >
                               <span className="h-2.5 w-2.5 rounded-full bg-purple-500" />
                               CFR
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setTypeFilter("daily");
+                                setIsTypeMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                            >
+                              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                              Daily Report
                             </button>
                           </div>
                         )}

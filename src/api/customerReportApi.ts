@@ -2,7 +2,7 @@ import { API_BASE_URL } from "./config";
 
 export type CreateCustomerReportPayload = {
   sourceReportId?: string;
-  sourceReportType: "cfr" | "corrective" | "health_check";
+  sourceReportType: "cfr" | "corrective" | "health_check" | "service_report" | "daily" | "daily_report";
 
   vesselId?: string;
   vesselName?: string;
@@ -20,7 +20,7 @@ export type CreateCustomerReportPayload = {
 export type CustomerReportResponse = {
   id: string;
   sourceReportId?: string;
-  sourceReportType?: "cfr" | "service_report" | "health_check";
+  sourceReportType?: "cfr" | "service_report" | "health_check" | "daily" | "daily_report";
   vesselId?: string;
   vesselName?: string;
   machineId?: string;

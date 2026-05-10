@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getVesselById } from "../../api/vesselsApi";
 import { getMachineSummaries } from "../../api/machinesApi";
 import type { OfficeVessel } from "../../types/vessel";
-import type { OfficeMachineSummary } from "../../types/machine";
+import type { OfficeMachineSummary, OfficeReportCategory } from "../../types/machine";
 
 function statusClasses(status: "online" | "down" | "unknown") {
   if (status === "online") {
@@ -17,7 +17,7 @@ function statusClasses(status: "online" | "down" | "unknown") {
   return "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
-function reportTypeClasses(type?: "health_check" | "corrective" | "cfr") {
+function reportTypeClasses(type?: OfficeReportCategory) {
   if (type === "health_check") {
     return "bg-blue-100 text-blue-800";
   }
@@ -30,10 +30,14 @@ function reportTypeClasses(type?: "health_check" | "corrective" | "cfr") {
     return "bg-purple-100 text-purple-800";
   }
 
+  if (type === "daily") {
+    return "bg-emerald-100 text-emerald-800";
+  }
+
   return "bg-slate-100 text-slate-600";
 }
 
-function formatRepportType(type?: "health_check" | "corrective" | "cfr") {
+function formatRepportType(type?: OfficeReportCategory) {
   if (type === "health_check") {
     return "Health Check";
   }
@@ -44,6 +48,10 @@ function formatRepportType(type?: "health_check" | "corrective" | "cfr") {
 
   if (type === "cfr") {
     return "CFR";
+  }
+
+  if (type === "daily") {
+    return "Daily Report";
   }
 
   return "—";

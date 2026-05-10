@@ -1,10 +1,11 @@
 import type { OfficeMachineSummary } from "../types/machine";
+import type { OfficeReportCategory } from "../types/machine";
 import { API_BASE_URL } from "./config";
 
 export type MachineTimelineItem = {
   id: string;
-  type: "preventive" | "corrective" | "cfr";
-  reportCategory: "health_check" | "corrective" | "cfr";
+  type: "preventive" | "corrective" | "cfr" | "daily";
+  reportCategory: OfficeReportCategory;
   date: string;
   status: "online" | "down" | "unknown";
   title: string;

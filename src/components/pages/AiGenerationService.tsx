@@ -7,6 +7,10 @@ import ServiceReportUI, {
   type AiServiceReport,
   type SourceServiceReport,
 } from "./ServiceReportUI";
+import DailyReportUI, {
+  type AiDailyReport,
+  type SourceDailyReport,
+} from "./DailyReportUI";
 
 type AiGenerationLocationState =
   | {
@@ -18,6 +22,11 @@ type AiGenerationLocationState =
       reportType: "corrective";
       sourceReport: SourceServiceReport;
       aiReport: AiServiceReport;
+    }
+  | {
+      reportType: "daily";
+      sourceReport: SourceDailyReport;
+      aiReport: AiDailyReport;
     }
   | {
       reportType: "health_check";
@@ -65,6 +74,17 @@ export function AiGenerationService() {
     return (
       <div className="h-[calc(100vh-96px)] overflow-y-auto overflow-x-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">
         <ServiceReportUI
+          aiReport={state.aiReport}
+          sourceReport={state.sourceReport}
+        />
+      </div>
+    );
+  }
+
+  if (reportType === "daily" && state.reportType === "daily") {
+    return (
+      <div className="h-[calc(100vh-96px)] overflow-y-auto overflow-x-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">
+        <DailyReportUI
           aiReport={state.aiReport}
           sourceReport={state.sourceReport}
         />

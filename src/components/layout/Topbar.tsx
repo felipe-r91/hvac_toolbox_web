@@ -5,6 +5,7 @@ import { getMachineSummaryById } from "../../api/machineDetailApi";
 import {
   getCfrReportById,
   getCorrectiveReportById,
+  getDailyReportById,
   getHealthCheckReportById,
 } from "../../api/reportDetailApi";
 
@@ -56,7 +57,8 @@ export function Topbar() {
   const isReportRoute =
     location.pathname.startsWith("/reports/") ||
     location.pathname.startsWith("/corrective-reports/") ||
-    location.pathname.startsWith("/cfr-reports/");
+    location.pathname.startsWith("/cfr-reports/") ||
+    location.pathname.startsWith("/daily-reports/");
 
   useEffect(() => {
     let cancelled = false;
@@ -131,7 +133,8 @@ export function Topbar() {
       const isReportDetailRoute =
         route === "reports" ||
         route === "corrective-reports" ||
-        route === "cfr-reports";
+        route === "cfr-reports" ||
+        route === "daily-reports";
 
       if (!isReportDetailRoute || !reportId) {
         setReportData(null);
@@ -181,6 +184,22 @@ export function Topbar() {
               machineId: report.machineId,
               machineTag: report.machineTag,
               reportLabel: "CFR Report",
+            });
+          }
+
+          return;
+        }
+
+        if (route === "daily-reports") {
+          const report = await getDailyReportById(reportId);
+
+          if (!cancelled) {
+            setReportData({
+              vesselId: report.vesselId,
+              vesselName: report.vesselName,
+              machineId: report.machineId,
+              machineTag: report.machineTag,
+              reportLabel: "Daily Report",
             });
           }
         }

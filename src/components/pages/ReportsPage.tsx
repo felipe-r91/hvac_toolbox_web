@@ -8,9 +8,9 @@ import {
 
 type CustomerReport = CustomerReportResponse;
 
+type CustomerReportType = NonNullable<CustomerReportResponse["sourceReportType"]>;
 
-
-function reportTypeClasses(type?: "health_check" | "service_report" | "cfr") {
+function reportTypeClasses(type?: CustomerReportType) {
   if (type === "health_check") {
     return "bg-blue-100 text-blue-800";
   }
@@ -23,13 +23,18 @@ function reportTypeClasses(type?: "health_check" | "service_report" | "cfr") {
     return "bg-purple-100 text-purple-800";
   }
 
+  if (type === "daily" || type === "daily_report") {
+    return "bg-emerald-100 text-emerald-800";
+  }
+
   return "bg-slate-100 text-slate-600";
 }
 
-function reportTypeLabel(type?: "health_check" | "service_report" | "cfr") {
+function reportTypeLabel(type?: CustomerReportType) {
   if (type === "health_check") return "Health Check";
   if (type === "service_report") return "Service Report";
   if (type === "cfr") return "CFR";
+  if (type === "daily" || type === "daily_report") return "Daily Report";
   return "PDF Report";
 }
 
@@ -105,7 +110,9 @@ export function ReportsPage() {
       
 
       const matchesReportType =
-        reportTypeFilter === "all" || report.sourceReportType === reportTypeFilter;
+        reportTypeFilter === "all" ||
+        report.sourceReportType === reportTypeFilter ||
+        (reportTypeFilter === "daily_report" && report.sourceReportType === "daily");
 
       return matchesSearch && matchesVessel && matchesReportType;
     });
@@ -186,7 +193,8 @@ export function ReportsPage() {
             >
               <option value="all">All report types</option>
               <option value="health_check">Health Check</option>
-              <option value="corrective">Corrective</option>
+              <option value="service_report">Service Report</option>
+              <option value="daily_report">Daily Report</option>
               <option value="cfr">CFR</option>
             </select>
           </label>

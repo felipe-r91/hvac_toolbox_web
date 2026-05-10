@@ -1,4 +1,4 @@
-export type OfficeReportCategory = "health_check" | "corrective" | "cfr";
+export type OfficeReportCategory = "health_check" | "corrective" | "cfr" | "daily";
 
 export type OfficeMachine = {
   id: string;
@@ -23,7 +23,7 @@ export type OfficeMachineRow = {
   location: string;
   status: "online" | "down" | "unknown";
   lastMaintenanceAt?: string;
-  lastReportType?: "health_check" | "corrective" | "cfr";
+  lastReportType?: OfficeReportCategory;
 };
 
 export type OfficeMachineSummary = {
@@ -37,9 +37,10 @@ export type OfficeMachineSummary = {
   starterType: string;
   location: string;
   latestReportDate?: string;
-  latestReportType?: "health_check" | "corrective" | "cfr";
+  latestReportType?: OfficeReportCategory;
   latestKnownStatus?: "online" | "down" | "unknown";
   preventiveReportCount: number;
   correctiveDraftCount: number;
   cfrDraftCount: number;
+  dailyDraftCount?: number;
 };

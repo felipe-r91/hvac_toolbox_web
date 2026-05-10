@@ -12,6 +12,7 @@ import { CfrReportDetailPage } from "../components/pages/CfrReportDetailPage";
 import { CorrectiveReportDetailPage } from "../components/pages/CorrectiveReportDetailPage";
 import { HealthCheckReportDetailPage } from "../components/pages/HealthCheckReportDetailPage";
 import { AiGenerationPage } from "../components/pages/AiGenerationPage";
+import { DailyReportDetailPage } from "../components/pages/DailyReportDetailPage";
 
 export function AppRouter() {
   return (
@@ -31,6 +32,7 @@ export function AppRouter() {
           <Route path="/reports/:reportId" element={<HealthCheckReportDetailPage />} />
           <Route path="/corrective-reports/:reportId" element={<CorrectiveReportDetailPage />} />
           <Route path="/cfr-reports/:reportId" element={<CfrReportDetailPage />} />
+          <Route path="/daily-reports/:reportId" element={<DailyReportDetailPage />} />
           <Route path="/ai-generation" element={<AiGenerationPage />} />
         </Route>
       </Routes>

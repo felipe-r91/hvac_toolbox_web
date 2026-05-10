@@ -125,3 +125,33 @@ export type CorrectiveReportDetail = {
   reportCategory: "corrective";
   photos: ReportPhotoDetail[];
 };
+
+export type DailyReportDetail = {
+  id: string;
+  vesselId: string;
+  vesselName: string;
+  machineId: string;
+  machineTag: string;
+  machineModel: string;
+  machineSerialNumber?: string;
+  machineType: string;
+  machineStarterType: string;
+  machineLocation: string;
+  machinePhotoId?: string;
+  machinePhotoPreviewUrl?: string;
+  createdAt: string;
+
+  alarmPresent?: boolean;
+  reportCategory: "daily";
+
+  failureComponent?: string;
+  failureMode?: string;
+  failureCode?: string;
+  failureNotes?: string;
+
+  workConductedToday?: string;
+  furtherActions?: string;
+
+  synced?: boolean;
+  photos: ReportPhotoDetail[];
+};

@@ -76,18 +76,33 @@ export type SourceCfrReport = {
   vesselName?: string;
   vesselId?: string;
   vesselImoNumber?: string;
+  imoNumber?: string;
   vesselType?: string;
   vesselOwner?: string;
+  ownerCustomer?: string;
+  customer?: string;
   requestedBy?: string;
   vesselContact?: string;
 
   machineTag?: string;
   machineId?: string;
   machineModel?: string;
+  machineMfg?: string;
+  machineManufacturer?: string;
+  mfg?: string;
+  manufacturer?: string;
   machineType?: string;
   machineStarterType?: string;
   machineLocation?: string;
   machineSerialNumber?: string;
+  machineRefrigerant?: string;
+  refrigerant?: string;
+  machineOilType?: string;
+  oilType?: string;
+  machineControlSystem?: string;
+  controlSystem?: string;
+  machineSoftwareVersion?: string;
+  softwareVersion?: string;
   machinePhotoPreviewUrl?: string;
 
   createdAt?: string;
@@ -131,6 +146,7 @@ type NormalizedReport = {
     controlSystem: string;
     software: string;
     starterType: string;
+    manufacturer: string;
   };
   executiveSummary: string;
   conditionFound: string;
@@ -720,9 +736,13 @@ export default function ConditionsFoundReportUI({
 
     vessel: {
       name: sourceReport.vesselName || "—",
-      imo: sourceReport.vesselImoNumber || "—",
+      imo: sourceReport.vesselImoNumber || sourceReport.imoNumber || "—",
       type: sourceReport.vesselType || "—",
-      owner: sourceReport.vesselOwner || "—",
+      owner:
+        sourceReport.vesselOwner ||
+        sourceReport.ownerCustomer ||
+        sourceReport.customer ||
+        "—",
       requestedBy: sourceReport.requestedBy || "—",
       contact: sourceReport.vesselContact || "—",
     },
@@ -732,11 +752,19 @@ export default function ConditionsFoundReportUI({
       systemType: sourceReport.machineType || "—",
       model: sourceReport.machineModel || "—",
       serial: sourceReport.machineSerialNumber || "—",
-      refrigerant: "",
-      oil: "",
-      controlSystem: "",
-      software: "",
+      refrigerant: sourceReport.machineRefrigerant || sourceReport.refrigerant || "—",
+      oil: sourceReport.machineOilType || sourceReport.oilType || "—",
+      controlSystem:
+        sourceReport.machineControlSystem || sourceReport.controlSystem || "—",
+      software:
+        sourceReport.machineSoftwareVersion || sourceReport.softwareVersion || "—",
       starterType: sourceReport.machineStarterType || "—",
+      manufacturer:
+        sourceReport.machineMfg ||
+        sourceReport.machineManufacturer ||
+        sourceReport.mfg ||
+        sourceReport.manufacturer ||
+        "—",
     },
 
     executiveSummary: aiReport.executiveSummary || "",
@@ -1023,7 +1051,7 @@ export default function ConditionsFoundReportUI({
                 <InfoRow label="Starter Type" value={report.equipment.starterType} />
                 <InfoRow label="Last Overhaul Hours" value="" />
                 <InfoRow label="Compressor Type" value={report.equipment.systemType} />
-                <InfoRow label="Mfg" value="" />
+                <InfoRow label="Mfg" value={report.equipment.manufacturer} />
               </div>
             </div>
           </Section>

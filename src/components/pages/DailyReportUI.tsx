@@ -48,6 +48,7 @@ export type AiDailyReport = {
     title?: string;
     subtitle?: string;
     company?: string;
+    vesselImo?: string;
     vesselImoNumber?: string;
     imoNumber?: string;
     branch?: string;
@@ -71,6 +72,7 @@ export type SourceDailyReport = {
     id?: string;
     vesselName?: string;
     vesselId?: string;
+    vesselImo?: string;
     vesselImoNumber?: string;
     imoNumber?: string;
     vesselType?: string;
@@ -756,8 +758,10 @@ export default function DailyReportUI({
         vessel: {
             name: sourceReport.vesselName || "—",
             imo:
+                aiReport.vesselImo ||
                 aiReport.vesselImoNumber ||
                 aiReport.imoNumber ||
+                sourceReport.vesselImo ||
                 sourceReport.vesselImoNumber ||
                 sourceReport.imoNumber ||
                 "—",

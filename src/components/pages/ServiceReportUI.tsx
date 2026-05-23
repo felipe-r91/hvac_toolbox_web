@@ -51,6 +51,7 @@ export type AiServiceReport = {
     title?: string;
     subtitle?: string;
     company?: string;
+    vesselImo?: string;
     vesselImoNumber?: string;
     imoNumber?: string;
     branch?: string;
@@ -77,6 +78,7 @@ export type SourceServiceReport = {
     id?: string;
     vesselName?: string;
     vesselId?: string;
+    vesselImo?: string;
     vesselImoNumber?: string;
     imoNumber?: string;
     vesselType?: string;
@@ -769,8 +771,10 @@ export default function ServiceReportUI({
         vessel: {
             name: sourceReport.vesselName || "—",
             imo:
+                aiReport.vesselImo ||
                 aiReport.vesselImoNumber ||
                 aiReport.imoNumber ||
+                sourceReport.vesselImo ||
                 sourceReport.vesselImoNumber ||
                 sourceReport.imoNumber ||
                 "—",

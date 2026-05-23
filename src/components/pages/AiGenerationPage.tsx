@@ -23,16 +23,20 @@ import type {
 
 function typeLabel(type: DraftReportType) {
   if (type === "cfr") return "CFR";
-  if (type === "corrective") return "Corrective";
+  if (type === "service_report") return "Service Report";
   if (type === "daily") return "Daily Report";
   return "Health Check";
 }
 
 function typeClasses(type: DraftReportType) {
   if (type === "cfr") return "bg-purple-100 text-purple-800";
-  if (type === "corrective") return "bg-yellow-100 text-yellow-800";
+  if (type === "service_report") return "bg-yellow-100 text-yellow-800";
   if (type === "daily") return "bg-emerald-100 text-emerald-800";
   return "bg-blue-100 text-blue-800";
+}
+
+function reportTypePath(type: DraftReportType) {
+  return type === "service_report" ? "service-report" : type;
 }
 
 function formatDate(value?: string) {
@@ -45,7 +49,7 @@ function formatDate(value?: string) {
 }
 
 async function getSourceReport<T>(type: DraftReportType, id: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}/api/reports/${type}/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/api/reports/${reportTypePath(type)}/${id}`, {
     headers: {
       "Content-Type": "application/json",
     },
@@ -159,15 +163,15 @@ export function AiGenerationPage() {
         return;
       }
 
-      if (draft.type === "corrective") {
+      if (draft.type === "service_report") {
         const [sourceReport, aiReport] = await Promise.all([
-          getSourceReport<SourceServiceReport>("corrective", draft.id),
-          generateAiReport("corrective", draft.id) as Promise<AiServiceReport>,
+          getSourceReport<SourceServiceReport>("service_report", draft.id),
+          generateAiReport("service_report", draft.id) as Promise<AiServiceReport>,
         ]);
 
-        navigate(`/ai-generation-service/corrective/${draft.id}`, {
+        navigate(`/ai-generation-service/service-report/${draft.id}`, {
           state: {
-            reportType: "corrective",
+            reportType: "service_report",
             sourceReport,
             aiReport,
           },
@@ -257,7 +261,7 @@ export function AiGenerationPage() {
             >
               <option value="all">All report types</option>
               <option value="preventive">Health Check</option>
-              <option value="corrective">Corrective</option>
+              <option value="service_report">Service Report</option>
               <option value="daily">Daily Report</option>
               <option value="cfr">CFR</option>
             </select>

@@ -1,8 +1,8 @@
 import type {
   CfrDraftDetail,
-  CorrectiveReportDetail,
   DailyReportDetail,
   PreventiveReportDetail,
+  ServiceReportDetail,
 } from "../types/report";
 import { API_BASE_URL } from "./config";
 
@@ -17,12 +17,12 @@ export async function getHealthCheckReportById(id: string): Promise<PreventiveRe
   return response.json();
 }
 
-export async function getCorrectiveReportById(id: string): Promise<CorrectiveReportDetail> {
-  const response = await fetch(`${API_BASE_URL}/api/reports/corrective/${id}`);
+export async function getServiceReportById(id: string): Promise<ServiceReportDetail> {
+  const response = await fetch(`${API_BASE_URL}/api/reports/service-report/${id}`);
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Failed to load corrective report ${id}: ${text}`);
+    throw new Error(`Failed to load service report ${id}: ${text}`);
   }
 
   return response.json();

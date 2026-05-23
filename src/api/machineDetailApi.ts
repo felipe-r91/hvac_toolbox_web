@@ -4,7 +4,7 @@ import { API_BASE_URL } from "./config";
 
 export type MachineTimelineItem = {
   id: string;
-  type: "preventive" | "corrective" | "cfr" | "daily";
+  type: "preventive" | "service_report" | "cfr" | "daily";
   reportCategory: OfficeReportCategory;
   date: string;
   status: "online" | "down" | "unknown";
@@ -13,7 +13,7 @@ export type MachineTimelineItem = {
   failureComponent?: string;
   failureMode?: string;
   failureCode?: string;
-  linkedCorrectiveDraftId?: string;
+  linkedServiceReportDraftId?: string;
   sourcePreventiveReportId?: string;
 };
 

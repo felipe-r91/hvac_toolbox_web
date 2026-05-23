@@ -111,6 +111,10 @@ export type SourceServiceReport = {
     machineReturnedToService?: string;
 
     createdAt?: string;
+    reportCategory?: string;
+    workPerformed?: string;
+    recommendations?: string;
+    furtherActionRequired?: string;
     photos?: {
         id: string;
         filename?: string;
@@ -1100,7 +1104,7 @@ export default function ServiceReportUI({
                             <InfoRow label="Location" value={report.location} />
                             <InfoRow label="Service Engineer" value={report.engineer} />
                             <InfoRow label="Report Type" value="Service Report" />
-                            <InfoRow label="Reason for Attendance" value="Corrective service" />
+                            <InfoRow label="Reason for Attendance" value="Service attendance" />
                             <InfoRow label="Service Result" value={report.serviceResult} />
                             <InfoRow label="Further Action" value={report.furtherActionRequired ? "Required" : "Not provided"} />
                         </div>

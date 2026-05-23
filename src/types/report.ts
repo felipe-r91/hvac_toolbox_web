@@ -82,48 +82,47 @@ export type PreventiveReportDetail = {
   failureMode?: string;
   failureCode?: string;
   failureNotes?: string;
-  linkedCorrectiveDraftId?: string;
+  linkedServiceReportDraftId?: string;
   faultCount?: number;
   skippedCount?: number;
   reportCategory: "health_check";
   tasks: PreventiveTaskDetail[];
 };
 
-export type CorrectiveReportDetail = {
+export type ServiceReportDetail = {
   id: string;
   vesselId: string;
   vesselName: string;
+  vesselImo?: string;
+  vesselType?: string;
+  ownerCustomer?: string;
+  vesselContact?: string;
   machineId: string;
   machineTag: string;
-  machineModel: string;
-  machineType: string;
-  machineStarterType: string;
-  machineLocation: string;
+  machineModel?: string;
+  machineSerialNumber?: string;
+  machineType?: string;
+  machineStarterType?: string;
+  machineLocation?: string;
+  machineRefrigerant?: string;
+  machineOilType?: string;
+  machineControlSystem?: string;
+  machineSoftwareVersion?: string;
+  machineCompressorType?: string;
+  machineMfg?: string;
   machinePhotoId?: string;
   machinePhotoPreviewUrl?: string;
   createdAt: string;
 
-  failureComponent?: string;
-  failureMode?: string;
-  failureCode?: string;
+  workPerformed?: string;
+  recommendations?: string;
+  furtherActionRequired?: string;
 
-  problemSummary: string;
-  conditionFound: string;
-  symptomsObserved: string;
-  alarmsObserved: string;
-  operationalImpact: string;
-
-  preliminaryDiagnosis: string;
-  confirmedCause: string;
-
-  correctiveAction: string;
-  recommendations: string;
-  furtherActionRequired: string;
-
-  machineReturnedToService: "yes" | "no" | "unknown";
+  machineReturnedToService?: "yes" | "no" | "unknown" | string;
   sourcePreventiveReportId?: string;
-  reportCategory: "corrective";
-  photos: ReportPhotoDetail[];
+  reportCategory: "service_report";
+  synced?: boolean;
+  photos?: ReportPhotoDetail[];
 };
 
 export type DailyReportDetail = {

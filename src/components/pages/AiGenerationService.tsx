@@ -19,7 +19,7 @@ type AiGenerationLocationState =
       aiReport: AiCustomerReport;
     }
   | {
-      reportType: "corrective";
+      reportType: "service_report";
       sourceReport: SourceServiceReport;
       aiReport: AiServiceReport;
     }
@@ -70,7 +70,7 @@ export function AiGenerationService() {
     );
   }
 
-  if (reportType === "corrective" && state.reportType === "corrective") {
+  if (reportType === "service-report" && state.reportType === "service_report") {
     return (
       <div className="h-[calc(100vh-96px)] overflow-y-auto overflow-x-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">
         <ServiceReportUI

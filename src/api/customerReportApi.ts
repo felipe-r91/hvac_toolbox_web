@@ -2,7 +2,7 @@ import { API_BASE_URL } from "./config";
 
 export type CreateCustomerReportPayload = {
   sourceReportId?: string;
-  sourceReportType: "cfr" | "corrective" | "health_check" | "service_report" | "daily" | "daily_report";
+  sourceReportType: "cfr" | "health_check" | "service_report" | "daily" | "daily_report";
 
   vesselId?: string;
   vesselName?: string;

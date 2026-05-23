@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "./config";
 
-export type DraftReportType = "cfr" | "corrective" | "preventive" | "daily";
+export type DraftReportType = "cfr" | "service_report" | "preventive" | "daily";
 
 export type CfrDraftSummaryResponse = {
   id: string;
@@ -17,18 +17,17 @@ export type CfrDraftSummaryResponse = {
   reportCategory: string;
 };
 
-export type CorrectiveDraftSummaryResponse = {
+export type ServiceReportDraftSummaryResponse = {
   id: string;
   vesselName: string;
   machineTag: string;
-  machineModel: string;
-  machineLocation: string;
+  machineModel?: string;
+  machineLocation?: string;
   createdAt: string;
-  failureComponent: string;
-  failureMode: string;
-  failureCode: string;
-  problemSummary: string;
-  machineReturnedToService: string;
+  workPerformed?: string;
+  recommendations?: string;
+  furtherActionRequired?: string;
+  machineReturnedToService?: string;
   reportCategory: string;
 };
 
@@ -204,10 +203,10 @@ export async function getCfrDrafts(): Promise<CfrDraftSummaryResponse[]> {
   return request<CfrDraftSummaryResponse[]>("/api/reports/cfr");
 }
 
-export async function getCorrectiveDrafts(): Promise<
-  CorrectiveDraftSummaryResponse[]
+export async function getServiceReportDrafts(): Promise<
+  ServiceReportDraftSummaryResponse[]
 > {
-  return request<CorrectiveDraftSummaryResponse[]>("/api/reports/corrective");
+  return request<ServiceReportDraftSummaryResponse[]>("/api/reports/service-report");
 }
 
 export async function getPreventiveReports(): Promise<
@@ -221,9 +220,9 @@ export async function getDailyDrafts(): Promise<DailyDraftSummaryResponse[]> {
 }
 
 export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
-  const [cfrDrafts, correctiveDrafts, preventiveReports, dailyDrafts] = await Promise.all([
+  const [cfrDrafts, serviceReportDrafts, preventiveReports, dailyDrafts] = await Promise.all([
     getCfrDrafts(),
-    getCorrectiveDrafts(),
+    getServiceReportDrafts(),
     getPreventiveReports(),
     getDailyDrafts(),
   ]);
@@ -239,12 +238,12 @@ export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
     reportCategory: draft.reportCategory,
   }));
 
-  const correctiveRows: DraftReportRow[] = correctiveDrafts.map((draft) => ({
+  const serviceReportRows: DraftReportRow[] = serviceReportDrafts.map((draft) => ({
     id: draft.id,
     vessel: safeValue(draft.vesselName),
     machine: machineLabel(draft.machineTag, draft.machineModel),
     machineLocation: safeValue(draft.machineLocation),
-    type: "corrective",
+    type: "service_report",
     date: draft.createdAt,
     status: safeValue(draft.machineReturnedToService),
     reportCategory: draft.reportCategory,
@@ -272,7 +271,11 @@ export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
     reportCategory: draft.reportCategory || "daily",
   }));
 
-  return [...cfrRows, ...correctiveRows, ...preventiveRows, ...dailyRows].sort(sortByNewestDate);
+  return [...cfrRows, ...serviceReportRows, ...preventiveRows, ...dailyRows].sort(sortByNewestDate);
+}
+
+function apiReportTypePath(type: DraftReportType) {
+  return type === "service_report" ? "service-report" : type;
 }
 
 export async function generateAiReport(
@@ -284,7 +287,7 @@ export async function generateAiReport(
   }
 
   return request<AiGeneratedReportResponse>(
-    `/api/ai-reports/${type}/${id}/generate`,
+    `/api/ai-reports/${apiReportTypePath(type)}/${id}/generate`,
     {
       method: "POST",
     }
@@ -302,11 +305,11 @@ export async function generateCfrAiReport(
   );
 }
 
-export async function generateCorrectiveAiReport(
+export async function generateServiceReportAiReport(
   draftId: string
 ): Promise<AiServiceReportResponse> {
   return request<AiServiceReportResponse>(
-    `/api/ai-reports/corrective/${draftId}/generate`,
+    `/api/ai-reports/service-report/${draftId}/generate`,
     {
       method: "POST",
     }

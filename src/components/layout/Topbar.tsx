@@ -4,9 +4,9 @@ import { getVesselById } from "../../api/vesselsApi";
 import { getMachineSummaryById } from "../../api/machineDetailApi";
 import {
   getCfrReportById,
-  getCorrectiveReportById,
   getDailyReportById,
   getHealthCheckReportById,
+  getServiceReportById,
 } from "../../api/reportDetailApi";
 
 const routeTitles: Record<string, string> = {
@@ -56,7 +56,7 @@ export function Topbar() {
 
   const isReportRoute =
     location.pathname.startsWith("/reports/") ||
-    location.pathname.startsWith("/corrective-reports/") ||
+    location.pathname.startsWith("/service-report/") ||
     location.pathname.startsWith("/cfr-reports/") ||
     location.pathname.startsWith("/daily-reports/");
 
@@ -132,7 +132,7 @@ export function Topbar() {
 
       const isReportDetailRoute =
         route === "reports" ||
-        route === "corrective-reports" ||
+        route === "service-report" ||
         route === "cfr-reports" ||
         route === "daily-reports";
 
@@ -158,8 +158,8 @@ export function Topbar() {
           return;
         }
 
-        if (route === "corrective-reports") {
-          const report = await getCorrectiveReportById(reportId);
+        if (route === "service-report") {
+          const report = await getServiceReportById(reportId);
 
           if (!cancelled) {
             setReportData({
@@ -167,7 +167,7 @@ export function Topbar() {
               vesselName: report.vesselName,
               machineId: report.machineId,
               machineTag: report.machineTag,
-              reportLabel: "Corrective Report",
+              reportLabel: "Service Report",
             });
           }
 

@@ -1,24 +1,14 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { getCorrectiveReportById } from "../../api/reportDetailApi";
-import type { CorrectiveReportDetail } from "../../types/report";
-import { API_BASE_URL } from "../../api/config";
+import { useNavigate, useParams } from "react-router-dom";
 import { VscSparkle } from "react-icons/vsc";
-import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../../api/config";
+import { getServiceReportById } from "../../api/reportDetailApi";
+import type { ServiceReportDetail } from "../../types/report";
 
 function resolvePhotoUrl(url?: string) {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   return `${API_BASE_URL}${url}`;
-}
-
-function formatFailureCode(code?: string) {
-  if (!code) return "—";
-
-  return code
-    .split("_")
-    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
-    .join(" ");
 }
 
 function AiGenerationProgress({
@@ -68,13 +58,10 @@ function LoadingImage({
   wrapperClassName?: string;
   emptyText?: string;
 }) {
-  const [isLoading, setIsLoading] = useState(Boolean(src));
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    setIsLoading(Boolean(src));
-    setHasError(false);
-  }, [src]);
+  const [loadedSrc, setLoadedSrc] = useState("");
+  const [failedSrc, setFailedSrc] = useState("");
+  const isLoading = Boolean(src) && loadedSrc !== src && failedSrc !== src;
+  const hasError = Boolean(src) && failedSrc === src;
 
   if (!src || hasError) {
     return (
@@ -99,21 +86,20 @@ function LoadingImage({
         src={src}
         alt={alt}
         className={`${className} ${isLoading ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
-        onLoad={() => setIsLoading(false)}
+        onLoad={() => setLoadedSrc(src)}
         onError={() => {
-          setIsLoading(false);
-          setHasError(true);
+          setFailedSrc(src);
         }}
       />
     </div>
   );
 }
 
-export function CorrectiveReportDetailPage() {
+export function ServiceReportDetailPage() {
   const { reportId } = useParams();
   const navigate = useNavigate();
 
-  const [report, setReport] = useState<CorrectiveReportDetail | null>(null);
+  const [report, setReport] = useState<ServiceReportDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -127,10 +113,10 @@ export function CorrectiveReportDetailPage() {
       try {
         setLoading(true);
         setError("");
-        setReport(await getCorrectiveReportById(reportId));
+        setReport(await getServiceReportById(reportId));
       } catch (err) {
         console.error(err);
-        setError("Failed to load corrective report.");
+        setError("Failed to load service report.");
       } finally {
         setLoading(false);
       }
@@ -143,14 +129,13 @@ export function CorrectiveReportDetailPage() {
     if (!aiLoading) return;
 
     setAiProgress(8);
-    setAiStep("Preparing corrective report data...");
+    setAiStep("Preparing service report data...");
 
     const steps = [
-      { progress: 18, text: "Reading corrective notes..." },
-      { progress: 32, text: "Reviewing fault classification..." },
-      { progress: 46, text: "Searching relevant manual references..." },
-      { progress: 62, text: "Building service report analysis..." },
-      { progress: 78, text: "Generating customer-ready service report..." },
+      { progress: 18, text: "Reading service notes..." },
+      { progress: 36, text: "Reviewing work performed..." },
+      { progress: 54, text: "Building service report analysis..." },
+      { progress: 74, text: "Generating customer-ready service report..." },
       { progress: 90, text: "Formatting service report sections..." },
     ];
 
@@ -172,12 +157,13 @@ export function CorrectiveReportDetailPage() {
     return () => window.clearInterval(interval);
   }, [aiLoading]);
 
-  if (loading) return <CardText text="Loading corrective report..." />;
+  if (loading) return <CardText text="Loading service report..." />;
   if (error || !report) {
-    return <CardText text={error || "Corrective report not found."} error />;
+    return <CardText text={error || "Service report not found."} error />;
   }
 
   const headerPhoto = report.machinePhotoPreviewUrl || "";
+  const photos = report.photos || [];
 
   async function handleGenerateAiReport() {
     if (!report?.id || aiLoading) return;
@@ -188,7 +174,7 @@ export function CorrectiveReportDetailPage() {
       setAiStep("Starting AI generation...");
 
       const response = await fetch(
-        `${API_BASE_URL}/api/ai-reports/corrective/${report.id}/generate`,
+        `${API_BASE_URL}/api/ai-reports/service-report/${report.id}/generate`,
         {
           method: "POST",
         }
@@ -207,9 +193,9 @@ export function CorrectiveReportDetailPage() {
       setAiStep("Service report generated successfully.");
 
       window.setTimeout(() => {
-        navigate(`/ai-generation-service/corrective/${report.id}`, {
+        navigate(`/ai-generation-service/service-report/${report.id}`, {
           state: {
-            reportType: "corrective",
+            reportType: "service_report",
             sourceReport: report,
             aiReport,
           },
@@ -234,7 +220,7 @@ export function CorrectiveReportDetailPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-semibold text-slate-900">
-                  Corrective Report
+                  Service Report
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
                   {new Date(report.createdAt).toLocaleString()}
@@ -243,18 +229,18 @@ export function CorrectiveReportDetailPage() {
 
               <div className="flex flex-wrap gap-2">
                 <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">
-                  Corrective
+                  Service Report
+                </span>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                  {report.synced ? "Synced" : "Draft"}
                 </span>
               </div>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
               <HeaderInfo label="Vessel" value={report.vesselName} />
               <HeaderInfo label="Machine" value={report.machineTag} />
-              <HeaderInfo
-                label="Model"
-                value={`${report.machineModel} · ${report.machineStarterType}`}
-              />
+              <HeaderInfo label="Model" value={report.machineModel} />
               <HeaderInfo label="Location" value={report.machineLocation} />
             </div>
 
@@ -289,40 +275,70 @@ export function CorrectiveReportDetailPage() {
         <div className="space-y-4">
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <h2 className="text-lg font-semibold text-slate-900">
-              Failure Classification
+              Vessel Information
             </h2>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <InfoCard label="Component" value={report.failureComponent || "—"} />
-              <InfoCard label="Mode" value={report.failureMode || "—"} />
-              <InfoCard label="Code" value={formatFailureCode(report.failureCode)} />
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <InfoCard label="IMO" value={report.vesselImo} />
+              <InfoCard label="Type" value={report.vesselType} />
+              <InfoCard label="Owner / Customer" value={report.ownerCustomer} />
+              <InfoCard label="Vessel Contact" value={report.vesselContact} />
             </div>
           </section>
 
-          <DetailSection title="Problem Summary" value={report.problemSummary} />
-          <DetailSection title="Condition Found" value={report.conditionFound} />
-          <DetailSection title="Symptoms Observed" value={report.symptomsObserved} />
-          <DetailSection title="Alarms / Abnormal Readings" value={report.alarmsObserved} />
-          <DetailSection title="Operational Impact" value={report.operationalImpact} />
-          <DetailSection title="Preliminary Diagnosis" value={report.preliminaryDiagnosis} />
-          <DetailSection title="Confirmed Cause" value={report.confirmedCause} />
-          <DetailSection title="Corrective Action Performed" value={report.correctiveAction} />
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Equipment Information
+            </h2>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <InfoCard label="Serial No." value={report.machineSerialNumber} />
+              <InfoCard label="Machine Type" value={report.machineType} />
+              <InfoCard label="Starter Type" value={report.machineStarterType} />
+              <InfoCard label="Refrigerant" value={report.machineRefrigerant} />
+              <InfoCard label="Oil Type" value={report.machineOilType} />
+              <InfoCard label="Control System" value={report.machineControlSystem} />
+              <InfoCard label="Software Version" value={report.machineSoftwareVersion} />
+              <InfoCard label="Compressor Type" value={report.machineCompressorType} />
+              <InfoCard label="Mfg" value={report.machineMfg} />
+            </div>
+          </section>
+
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Service Information
+            </h2>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <InfoCard
+                label="Returned To Service"
+                value={report.machineReturnedToService}
+              />
+              <InfoCard
+                label="Source Health Check"
+                value={report.sourcePreventiveReportId}
+              />
+              <InfoCard label="Report Category" value={report.reportCategory} />
+            </div>
+          </section>
+
+          <DetailSection title="Work Performed" value={report.workPerformed} />
           <DetailSection title="Recommendations" value={report.recommendations} />
           <DetailSection title="Further Action Required" value={report.furtherActionRequired} />
 
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <h2 className="text-lg font-semibold text-slate-900">Photos</h2>
 
-            {report.photos.length > 0 ? (
+            {photos.length > 0 ? (
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {report.photos.map((photo) => (
+                {photos.map((photo) => (
                   <div
                     key={photo.id}
                     className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200"
                   >
                     <LoadingImage
                       src={resolvePhotoUrl(photo.previewUrl)}
-                      alt={photo.caption || "Corrective photo"}
+                      alt={photo.caption || "Service report photo"}
                       wrapperClassName="h-56 w-full rounded-2xl"
                       className="h-56 w-full rounded-2xl object-cover"
                       emptyText="Photo unavailable"
@@ -361,22 +377,26 @@ function DetailSection({ title, value }: { title: string; value?: string }) {
   );
 }
 
-function HeaderInfo({ label, value }: { label: string; value: string }) {
+function HeaderInfo({ label, value }: { label: string; value?: string }) {
   return (
     <div>
       <div className="text-xs font-medium uppercase tracking-wide text-slate-400">
         {label}
       </div>
-      <div className="mt-1 text-sm font-medium text-slate-900">{value}</div>
+      <div className="mt-1 text-sm font-medium text-slate-900">
+        {value?.trim() || "—"}
+      </div>
     </div>
   );
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
+function InfoCard({ label, value }: { label: string; value?: string }) {
   return (
     <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
       <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className="mt-1 text-sm font-medium text-slate-900">{value}</div>
+      <div className="mt-1 text-sm font-medium text-slate-900">
+        {value?.trim() || "—"}
+      </div>
     </div>
   );
 }

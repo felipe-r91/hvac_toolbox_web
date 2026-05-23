@@ -20,7 +20,7 @@ function reportTypeClasses(type?: OfficeReportCategory) {
     return "bg-blue-100 text-blue-800";
   }
 
-  if (type === "corrective") {
+  if (type === "service_report") {
     return "bg-yellow-100 text-yellow-800";
   }
 
@@ -37,7 +37,7 @@ function reportTypeClasses(type?: OfficeReportCategory) {
 
 function reportTypeLabel(type?: OfficeReportCategory) {
   if (type === "health_check") return "Health Check";
-  if (type === "corrective") return "Corrective";
+  if (type === "service_report") return "Service Report";
   if (type === "cfr") return "CFR";
   if (type === "daily") return "Daily Report";
   return "—";
@@ -186,7 +186,7 @@ export function MachinesPage() {
             >
               <option value="all">All report types</option>
               <option value="health_check">Health Check</option>
-              <option value="corrective">Corrective</option>
+              <option value="service_report">Service Report</option>
               <option value="daily">Daily Report</option>
               <option value="cfr">CFR</option>
             </select>

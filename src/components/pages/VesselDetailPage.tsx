@@ -22,7 +22,7 @@ function reportTypeClasses(type?: OfficeReportCategory) {
     return "bg-blue-100 text-blue-800";
   }
 
-  if (type === "corrective") {
+  if (type === "service_report") {
     return "bg-yellow-100 text-yellow-800";
   }
 
@@ -42,8 +42,8 @@ function formatRepportType(type?: OfficeReportCategory) {
     return "Health Check";
   }
 
-  if (type === "corrective") {
-    return "Corrective";
+  if (type === "service_report") {
+    return "Service Report";
   }
 
   if (type === "cfr") {
@@ -111,8 +111,8 @@ export function VesselDetailPage() {
       (m) => !m.latestKnownStatus || m.latestKnownStatus === "unknown"
     ).length;
 
-    const correctiveOpen = vesselMachines.filter(
-      (m) => m.latestReportType === "corrective" && m.latestKnownStatus === "down"
+    const serviceReportOpen = vesselMachines.filter(
+      (m) => m.latestReportType === "service_report" && m.latestKnownStatus === "down"
     ).length;
 
     const preventiveDueSoon = vesselMachines.filter((m) => {
@@ -137,7 +137,7 @@ export function VesselDetailPage() {
       unknownMachines,
       availability,
       preventiveDueSoon,
-      correctiveOpen,
+      serviceReportOpen,
     };
   }, [vesselMachines]);
 
@@ -216,9 +216,9 @@ export function VesselDetailPage() {
         </div>
 
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 md:col-span-2 xl:col-span-1">
-          <p className="text-sm text-slate-500">Corrective Open</p>
+          <p className="text-sm text-slate-500">Service Open</p>
           <p className="mt-3 text-3xl font-semibold text-slate-900">
-            {metrics.correctiveOpen}
+            {metrics.serviceReportOpen}
           </p>
         </div>
       </section>

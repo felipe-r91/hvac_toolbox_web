@@ -142,13 +142,10 @@ function LoadingImage({
   wrapperClassName?: string;
   emptyText?: string;
 }) {
-  const [isLoading, setIsLoading] = useState(Boolean(src));
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    setIsLoading(Boolean(src));
-    setHasError(false);
-  }, [src]);
+  const [loadedSrc, setLoadedSrc] = useState("");
+  const [failedSrc, setFailedSrc] = useState("");
+  const isLoading = Boolean(src) && loadedSrc !== src && failedSrc !== src;
+  const hasError = Boolean(src) && failedSrc === src;
 
   if (!src || hasError) {
     return (
@@ -173,10 +170,9 @@ function LoadingImage({
         src={src}
         alt={alt}
         className={`${className} ${isLoading ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
-        onLoad={() => setIsLoading(false)}
+        onLoad={() => setLoadedSrc(src)}
         onError={() => {
-          setIsLoading(false);
-          setHasError(true);
+          setFailedSrc(src);
         }}
       />
     </div>

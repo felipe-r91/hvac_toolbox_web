@@ -20,7 +20,7 @@ function reportTypeClasses(type: OfficeReportCategory) {
     return "bg-blue-100 text-blue-800";
   }
 
-  if (type === "corrective") {
+  if (type === "service_report") {
     return "bg-yellow-100 text-yellow-800";
   }
 
@@ -33,7 +33,7 @@ function reportTypeClasses(type: OfficeReportCategory) {
 
 function reportTypeLabel(type: OfficeReportCategory) {
   if (type === "health_check") return "Health Check";
-  if (type === "corrective") return "Corrective";
+  if (type === "service_report") return "Service Report";
   if (type === "daily") return "Daily Report";
   return "CFR";
 }
@@ -75,43 +75,43 @@ type DisplayTimelineItem =
   | {
     kind: "linked";
     healthCheck: MachineTimelineItem;
-    corrective: MachineTimelineItem;
+    serviceReport: MachineTimelineItem;
     date: string;
   };
 
 function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem[] {
   const healthChecks = items.filter((item) => item.reportCategory === "health_check");
-  const corrective = items.filter((item) => item.reportCategory === "corrective");
+  const serviceReports = items.filter((item) => item.reportCategory === "service_report");
   const cfr = items.filter((item) => item.reportCategory === "cfr");
   const daily = items.filter((item) => item.reportCategory === "daily");
 
-  const correctiveBySourcePreventiveId = new Map<string, MachineTimelineItem>();
-  const correctiveById = new Map(corrective.map((item) => [item.id, item]));
-  const linkedCorrectiveIds = new Set<string>();
+  const serviceReportBySourcePreventiveId = new Map<string, MachineTimelineItem>();
+  const serviceReportById = new Map(serviceReports.map((item) => [item.id, item]));
+  const linkedServiceReportIds = new Set<string>();
 
-  corrective.forEach((item) => {
+  serviceReports.forEach((item) => {
     if (item.sourcePreventiveReportId) {
-      correctiveBySourcePreventiveId.set(item.sourcePreventiveReportId, item);
+      serviceReportBySourcePreventiveId.set(item.sourcePreventiveReportId, item);
     }
   });
 
   const merged: DisplayTimelineItem[] = [];
 
   healthChecks.forEach((healthCheckItem) => {
-    const linkedCorrective =
-      (healthCheckItem.linkedCorrectiveDraftId
-        ? correctiveById.get(healthCheckItem.linkedCorrectiveDraftId)
+    const linkedServiceReport =
+      (healthCheckItem.linkedServiceReportDraftId
+        ? serviceReportById.get(healthCheckItem.linkedServiceReportDraftId)
         : undefined) ||
-      correctiveBySourcePreventiveId.get(healthCheckItem.id);
+      serviceReportBySourcePreventiveId.get(healthCheckItem.id);
 
-    if (linkedCorrective) {
-      linkedCorrectiveIds.add(linkedCorrective.id);
+    if (linkedServiceReport) {
+      linkedServiceReportIds.add(linkedServiceReport.id);
 
       merged.push({
         kind: "linked",
         healthCheck: healthCheckItem,
-        corrective: linkedCorrective,
-        date: linkedCorrective.date || healthCheckItem.date,
+        serviceReport: linkedServiceReport,
+        date: linkedServiceReport.date || healthCheckItem.date,
       });
     } else {
       merged.push({
@@ -122,12 +122,12 @@ function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem
     }
   });
 
-  corrective.forEach((correctiveItem) => {
-    if (!linkedCorrectiveIds.has(correctiveItem.id)) {
+  serviceReports.forEach((serviceReportItem) => {
+    if (!linkedServiceReportIds.has(serviceReportItem.id)) {
       merged.push({
         kind: "single",
-        item: correctiveItem,
-        date: correctiveItem.date,
+        item: serviceReportItem,
+        date: serviceReportItem.date,
       });
     }
   });
@@ -158,8 +158,8 @@ function getReportLink(item: MachineTimelineItem) {
     return `/reports/${item.id}`;
   }
 
-  if (item.reportCategory === "corrective") {
-    return `/corrective-reports/${item.id}`;
+  if (item.reportCategory === "service_report") {
+    return `/service-report/${item.id}`;
   }
 
   if (item.reportCategory === "daily") {
@@ -174,8 +174,8 @@ function getReportLinkLabel(item: MachineTimelineItem) {
     return "Open health check";
   }
 
-  if (item.reportCategory === "corrective") {
-    return "Open corrective";
+  if (item.reportCategory === "service_report") {
+    return "Open service report";
   }
 
   if (item.reportCategory === "daily") {
@@ -270,7 +270,6 @@ export function MachineDetailPage() {
     timeline
       .filter(
         (item) =>
-          item.reportCategory === "corrective" ||
           item.reportCategory === "cfr" ||
           item.reportCategory === "daily"
       )
@@ -344,8 +343,8 @@ export function MachineDetailPage() {
               </div>
 
               <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
-                HC: {machine.preventiveReportCount} · COR:{" "}
-                {machine.correctiveDraftCount} · CFR: {machine.cfrDraftCount}
+                HC: {machine.preventiveReportCount} · SR:{" "}
+                {machine.serviceReportDraftCount ?? 0} · CFR: {machine.cfrDraftCount}
                 {machine.dailyDraftCount !== undefined ? ` · Daily: ${machine.dailyDraftCount}` : ""}
               </div>
             </div>
@@ -465,13 +464,13 @@ export function MachineDetailPage() {
 
                             <button
                               onClick={() => {
-                                setTypeFilter("corrective");
+                                setTypeFilter("service_report");
                                 setIsTypeMenuOpen(false);
                               }}
                               className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
                             >
                               <span className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
-                              Corrective
+                              Service Report
                             </button>
 
                             <button
@@ -522,7 +521,7 @@ export function MachineDetailPage() {
                   {displayTimeline.length > 0 ? (
                     displayTimeline.map((entry) => {
                       const item =
-                        entry.kind === "linked" ? entry.corrective : entry.item;
+                        entry.kind === "linked" ? entry.serviceReport : entry.item;
 
                       const linkedHealthCheck =
                         entry.kind === "linked" ? entry.healthCheck : null;
@@ -533,7 +532,7 @@ export function MachineDetailPage() {
                         <tr
                           key={
                             entry.kind === "linked"
-                              ? `linked-${entry.healthCheck.id}-${entry.corrective.id}`
+                              ? `linked-${entry.healthCheck.id}-${entry.serviceReport.id}`
                               : `${item.reportCategory}-${item.id}`
                           }
                           className="border-t border-slate-200 hover:bg-slate-50"

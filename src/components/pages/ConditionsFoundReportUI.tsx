@@ -52,6 +52,8 @@ export type AiCustomerReport = {
   title?: string;
   subtitle?: string;
   company?: string;
+  vesselImoNumber?: string;
+  imoNumber?: string;
   branch?: string;
   date?: string;
   serviceOrder?: string;
@@ -736,7 +738,12 @@ export default function ConditionsFoundReportUI({
 
     vessel: {
       name: sourceReport.vesselName || "—",
-      imo: sourceReport.vesselImoNumber || sourceReport.imoNumber || "—",
+      imo:
+        aiReport.vesselImoNumber ||
+        aiReport.imoNumber ||
+        sourceReport.vesselImoNumber ||
+        sourceReport.imoNumber ||
+        "—",
       type: sourceReport.vesselType || "—",
       owner:
         sourceReport.vesselOwner ||

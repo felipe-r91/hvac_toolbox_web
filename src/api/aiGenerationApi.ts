@@ -75,6 +75,8 @@ export type AiCustomerReportResponse = {
   title: string;
   subtitle: string;
   company: string;
+  vesselImoNumber?: string;
+  imoNumber?: string;
   branch: string;
   date: string;
   serviceOrder: string;
@@ -99,6 +101,8 @@ export type AiServiceReportResponse = {
   title: string;
   subtitle: string;
   company: string;
+  vesselImoNumber?: string;
+  imoNumber?: string;
   branch: string;
   date: string;
   serviceOrder: string;
@@ -122,6 +126,8 @@ export type AiDailyReportResponse = {
   title: string;
   subtitle: string;
   company: string;
+  vesselImoNumber?: string;
+  imoNumber?: string;
   branch: string;
   date: string;
   serviceOrder: string;

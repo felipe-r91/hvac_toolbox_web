@@ -252,13 +252,10 @@ export function DailyReportDetailPage() {
               </div>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
               <HeaderInfo label="Vessel" value={report.vesselName} />
               <HeaderInfo label="Machine" value={report.machineTag} />
-              <HeaderInfo
-                label="Model"
-                value={`${report.machineModel} · ${report.machineStarterType}`}
-              />
+              <HeaderInfo label="Model" value={report.machineModel} />
               <HeaderInfo label="Location" value={report.machineLocation} />
             </div>
 

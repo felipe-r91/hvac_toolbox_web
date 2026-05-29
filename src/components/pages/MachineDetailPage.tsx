@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState, useRef } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   getMachineSummaryById,
   getMachineTimeline,
@@ -32,9 +32,9 @@ function reportTypeClasses(type: OfficeReportCategory) {
 }
 
 function reportTypeLabel(type: OfficeReportCategory) {
-  if (type === "machine_maintenance") return "Machine Maintenance Report";
-  if (type === "service_report") return "Service Report";
-  if (type === "daily") return "Daily Report";
+  if (type === "machine_maintenance") return "Machine Maintenance";
+  if (type === "service_report") return "Service";
+  if (type === "daily") return "Daily";
   return "CFR";
 }
 
@@ -171,24 +171,9 @@ function getReportLink(item: MachineTimelineItem) {
   return `/cfr-reports/${item.id}`;
 }
 
-function getReportLinkLabel(item: MachineTimelineItem) {
-  if (item.reportCategory === "machine_maintenance") {
-    return "Open machine maintenance report";
-  }
-
-  if (item.reportCategory === "service_report") {
-    return "Open service report";
-  }
-
-  if (item.reportCategory === "daily") {
-    return "Open daily report";
-  }
-
-  return "Open CFR";
-}
-
 export function MachineDetailPage() {
   const { machineId } = useParams();
+  const navigate = useNavigate();
 
   const [machine, setMachine] = useState<OfficeMachineSummary | null>(null);
   const [timeline, setTimeline] = useState<MachineTimelineItem[]>([]);
@@ -461,7 +446,7 @@ export function MachineDetailPage() {
                               className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
                             >
                               <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                              Machine Maintenance Report
+                              Machine Maintenance
                             </button>
 
                             <button
@@ -472,7 +457,7 @@ export function MachineDetailPage() {
                               className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
                             >
                               <span className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
-                              Service Report
+                              Service
                             </button>
 
                             <button
@@ -494,7 +479,7 @@ export function MachineDetailPage() {
                               className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
                             >
                               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                              Daily Report
+                              Daily
                             </button>
                           </div>
                         )}
@@ -512,10 +497,6 @@ export function MachineDetailPage() {
                     <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Failure
                     </th>
-
-                    <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Action
-                    </th>
                   </tr>
                 </thead>
 
@@ -529,6 +510,7 @@ export function MachineDetailPage() {
                         entry.kind === "linked" ? entry.machineMaintenanceReport : null;
 
                       const failureLabel = buildRecurringFailureLabel(item);
+                      const reportLink = getReportLink(item);
 
                       return (
                         <tr
@@ -537,7 +519,16 @@ export function MachineDetailPage() {
                               ? `linked-${entry.machineMaintenanceReport.id}-${entry.serviceReport.id}`
                               : `${item.reportCategory}-${item.id}`
                           }
-                          className="border-t border-slate-200 hover:bg-slate-50"
+                          role="link"
+                          tabIndex={0}
+                          onClick={() => navigate(reportLink)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              navigate(reportLink);
+                            }
+                          }}
+                          className="cursor-pointer border-t border-slate-200 outline-none hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-300"
                         >
                           <td className="whitespace-nowrap px-4 py-2 text-sm text-slate-700">
                             {new Date(entry.date).toLocaleString()}
@@ -555,7 +546,7 @@ export function MachineDetailPage() {
 
                               {linkedMachineMaintenanceReport ? (
                                 <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
-                                  Linked Machine Maintenance Report
+                                  Linked Machine Maintenance
                                 </span>
                               ) : null}
                             </div>
@@ -597,33 +588,13 @@ export function MachineDetailPage() {
                               "—"
                             )}
                           </td>
-
-                          <td className="px-4 py-2">
-                            <div className="flex flex-col gap-2">
-                              <Link
-                                to={getReportLink(item)}
-                                className="w-fit rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
-                              >
-                                {getReportLinkLabel(item)}
-                              </Link>
-
-                              {linkedMachineMaintenanceReport ? (
-                                <Link
-                                  to={`/machine-maintenance-reports/${linkedMachineMaintenanceReport.id}`}
-                                  className="w-fit rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
-                                >
-                                  Open machine maintenance report
-                                </Link>
-                              ) : null}
-                            </div>
-                          </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={5}
                         className="px-4 py-10 text-center text-sm text-slate-500"
                       >
                         No report history found.

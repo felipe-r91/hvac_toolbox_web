@@ -1100,7 +1100,7 @@ export default function DailyReportUI({
                             <InfoRow label="Date" value={report.date} />
                             <InfoRow label="Location" value={report.location} />
                             <InfoRow label="Service Engineer" value={report.engineer} />
-                            <InfoRow label="Report Type" value="Daily Report" />
+                            <InfoRow label="Report Type" value="Daily" />
                             <InfoRow label="Reason for Attendance" value="Daily service" />
                             <InfoRow label="Alarm Present" value={report.hasActiveAlarm ? "Yes" : "No"} />
                             <InfoRow label="Further Action" value={report.furtherActions.length > 0 ? "Required" : "Not provided"} />

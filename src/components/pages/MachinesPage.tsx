@@ -36,10 +36,10 @@ function reportTypeClasses(type?: OfficeReportCategory) {
 }
 
 function reportTypeLabel(type?: OfficeReportCategory) {
-  if (type === "machine_maintenance") return "Machine Maintenance Report";
-  if (type === "service_report") return "Service Report";
+  if (type === "machine_maintenance") return "Machine Maintenance";
+  if (type === "service_report") return "Service";
   if (type === "cfr") return "CFR";
-  if (type === "daily") return "Daily Report";
+  if (type === "daily") return "Daily";
   return "—";
 }
 
@@ -185,9 +185,9 @@ export function MachinesPage() {
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
             >
               <option value="all">All report types</option>
-              <option value="machine_maintenance">Machine Maintenance Report</option>
-              <option value="service_report">Service Report</option>
-              <option value="daily">Daily Report</option>
+              <option value="machine_maintenance">Machine Maintenance</option>
+              <option value="service_report">Service</option>
+              <option value="daily">Daily</option>
               <option value="cfr">CFR</option>
             </select>
           </label>

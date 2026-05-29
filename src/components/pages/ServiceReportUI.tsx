@@ -1103,7 +1103,7 @@ export default function ServiceReportUI({
                             <InfoRow label="Date" value={report.date} />
                             <InfoRow label="Location" value={report.location} />
                             <InfoRow label="Service Engineer" value={report.engineer} />
-                            <InfoRow label="Report Type" value="Service Report" />
+                            <InfoRow label="Report Type" value="Service" />
                             <InfoRow label="Reason for Attendance" value="Service attendance" />
                             <InfoRow label="Service Result" value={report.serviceResult} />
                             <InfoRow label="Further Action" value={report.furtherActionRequired ? "Required" : "Not provided"} />

@@ -1019,7 +1019,7 @@ export default function ConditionsFoundReportUI({
               <InfoRow label="Date" value={report.date} />
               <InfoRow label="Location" value={report.location} />
               <InfoRow label="Service Engineer" value={report.engineer} />
-              <InfoRow label="Report Type" value="Conditions Found Report" />
+              <InfoRow label="Report Type" value="Conditions Found" />
               <InfoRow label="Reason for Attendance" value="" />
               <InfoRow label="Final Condition" value={report.finalCondition} />
               <InfoRow label="Further Action" value="Required" />

@@ -84,7 +84,7 @@ export function MachineMaintenanceReportDetailPage() {
 
               <div className="flex flex-wrap gap-2">
                 <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
-                  Machine Maintenance Report
+                  Machine Maintenance
                 </span>
 
                 <span

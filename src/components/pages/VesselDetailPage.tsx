@@ -39,11 +39,11 @@ function reportTypeClasses(type?: OfficeReportCategory) {
 
 function formatRepportType(type?: OfficeReportCategory) {
   if (type === "machine_maintenance") {
-    return "Machine Maintenance Report";
+    return "Machine Maintenance";
   }
 
   if (type === "service_report") {
-    return "Service Report";
+    return "Service";
   }
 
   if (type === "cfr") {
@@ -51,7 +51,7 @@ function formatRepportType(type?: OfficeReportCategory) {
   }
 
   if (type === "daily") {
-    return "Daily Report";
+    return "Daily";
   }
 
   return "—";

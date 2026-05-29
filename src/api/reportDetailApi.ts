@@ -9,7 +9,7 @@ import { API_BASE_URL } from "./config";
 export async function getMachineMaintenanceReportById(
   id: string
 ): Promise<MachineMaintenanceReportDetail> {
-  const response = await fetch(`${API_BASE_URL}/api/reports/machine_maintenance/${id}`);
+  const response = await fetch(`${API_BASE_URL}/api/reports/preventive/${id}`);
 
   if (!response.ok) {
     const text = await response.text();

@@ -216,7 +216,7 @@ export async function getServiceReportDrafts(): Promise<
 export async function getMachineMaintenanceReports(): Promise<
   MachineMaintenanceReportSummaryResponse[]
 > {
-  return request<MachineMaintenanceReportSummaryResponse[]>("/api/reports/machine_maintenance");
+  return request<MachineMaintenanceReportSummaryResponse[]>("/api/reports/preventive");
 }
 
 export async function getDailyDrafts(): Promise<DailyDraftSummaryResponse[]> {

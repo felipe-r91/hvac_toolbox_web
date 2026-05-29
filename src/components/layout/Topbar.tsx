@@ -5,7 +5,7 @@ import { getMachineSummaryById } from "../../api/machineDetailApi";
 import {
   getCfrReportById,
   getDailyReportById,
-  getHealthCheckReportById,
+  getMachineMaintenanceReportById,
   getServiceReportById,
 } from "../../api/reportDetailApi";
 
@@ -55,7 +55,7 @@ export function Topbar() {
   const [reportData, setReportData] = useState<ReportBreadcrumbData | null>(null);
 
   const isReportRoute =
-    location.pathname.startsWith("/reports/") ||
+    location.pathname.startsWith("/machine-maintenance-reports/") ||
     location.pathname.startsWith("/service-report/") ||
     location.pathname.startsWith("/cfr-reports/") ||
     location.pathname.startsWith("/daily-reports/");
@@ -131,7 +131,7 @@ export function Topbar() {
       const reportId = parts[1];
 
       const isReportDetailRoute =
-        route === "reports" ||
+        route === "machine-maintenance-reports" ||
         route === "service-report" ||
         route === "cfr-reports" ||
         route === "daily-reports";
@@ -142,8 +142,8 @@ export function Topbar() {
       }
 
       try {
-        if (route === "reports") {
-          const report = await getHealthCheckReportById(reportId);
+        if (route === "machine-maintenance-reports") {
+          const report = await getMachineMaintenanceReportById(reportId);
 
           if (!cancelled) {
             setReportData({
@@ -151,7 +151,7 @@ export function Topbar() {
               vesselName: report.vesselName,
               machineId: report.machineId,
               machineTag: report.machineTag,
-              reportLabel: "Health Check Report",
+              reportLabel: "Machine Maintenance Report",
             });
           }
 

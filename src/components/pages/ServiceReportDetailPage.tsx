@@ -315,8 +315,8 @@ export function ServiceReportDetailPage() {
                 value={report.machineReturnedToService}
               />
               <InfoCard
-                label="Source Health Check"
-                value={report.sourcePreventiveReportId}
+                label="Source Machine Maintenance"
+                value={report.sourceMachineMaintenanceReportId}
               />
               <InfoCard label="Report Category" value={report.reportCategory} />
             </div>

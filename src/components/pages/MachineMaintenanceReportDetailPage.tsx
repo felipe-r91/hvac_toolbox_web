@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getHealthCheckReportById } from "../../api/reportDetailApi";
-import type { PreventiveReportDetail } from "../../types/report";
+import { getMachineMaintenanceReportById } from "../../api/reportDetailApi";
+import type { MachineMaintenanceReportDetail } from "../../types/report";
 import { API_BASE_URL } from "../../api/config";
 import { VscSparkle } from "react-icons/vsc";
 
@@ -34,10 +34,10 @@ function formatFailureCode(code?: string) {
     .join(" ");
 }
 
-export function HealthCheckReportDetailPage() {
+export function MachineMaintenanceReportDetailPage() {
   const { reportId } = useParams();
 
-  const [report, setReport] = useState<PreventiveReportDetail | null>(null);
+  const [report, setReport] = useState<MachineMaintenanceReportDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -48,10 +48,10 @@ export function HealthCheckReportDetailPage() {
       try {
         setLoading(true);
         setError("");
-        setReport(await getHealthCheckReportById(reportId));
+        setReport(await getMachineMaintenanceReportById(reportId));
       } catch (err) {
         console.error(err);
-        setError("Failed to load health check report.");
+        setError("Failed to load machine maintenance report.");
       } finally {
         setLoading(false);
       }
@@ -60,9 +60,9 @@ export function HealthCheckReportDetailPage() {
     run();
   }, [reportId]);
 
-  if (loading) return <CardText text="Loading health check..." />;
+  if (loading) return <CardText text="Loading machine maintenance report..." />;
   if (error || !report) {
-    return <CardText text={error || "Health check not found."} error />;
+    return <CardText text={error || "Machine maintenance report not found."} error />;
   }
 
   const headerPhoto = report.machinePhotoPreviewUrl || "";
@@ -75,7 +75,7 @@ export function HealthCheckReportDetailPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-semibold text-slate-900">
-                  Health Check Report
+                  Machine Maintenance Report
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
                   {new Date(report.completedAt).toLocaleString()}
@@ -84,7 +84,7 @@ export function HealthCheckReportDetailPage() {
 
               <div className="flex flex-wrap gap-2">
                 <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
-                  Health Check
+                  Machine Maintenance Report
                 </span>
 
                 <span

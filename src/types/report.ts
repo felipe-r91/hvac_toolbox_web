@@ -49,7 +49,7 @@ export type ReportPhotoDetail = {
   previewUrl: string;
 };
 
-export type PreventiveTaskDetail = {
+export type MachineMaintenanceTaskDetail = {
   id: string;
   taskTemplateId: string;
   category: string;
@@ -63,7 +63,7 @@ export type PreventiveTaskDetail = {
   completedAt?: string;
 };
 
-export type PreventiveReportDetail = {
+export type MachineMaintenanceReportDetail = {
   id: string;
   vesselId: string;
   vesselName: string;
@@ -85,8 +85,8 @@ export type PreventiveReportDetail = {
   linkedServiceReportDraftId?: string;
   faultCount?: number;
   skippedCount?: number;
-  reportCategory: "health_check";
-  tasks: PreventiveTaskDetail[];
+  reportCategory: "machine_maintenance";
+  tasks: MachineMaintenanceTaskDetail[];
 };
 
 export type ServiceReportDetail = {
@@ -119,7 +119,7 @@ export type ServiceReportDetail = {
   furtherActionRequired?: string;
 
   machineReturnedToService?: "yes" | "no" | "unknown" | string;
-  sourcePreventiveReportId?: string;
+  sourceMachineMaintenanceReportId?: string;
   reportCategory: "service_report";
   synced?: boolean;
   photos?: ReportPhotoDetail[];

@@ -18,7 +18,7 @@ function statusClasses(status: "online" | "down" | "unknown") {
 }
 
 function reportTypeClasses(type?: OfficeReportCategory) {
-  if (type === "health_check") {
+  if (type === "machine_maintenance") {
     return "bg-blue-100 text-blue-800";
   }
 
@@ -38,8 +38,8 @@ function reportTypeClasses(type?: OfficeReportCategory) {
 }
 
 function formatRepportType(type?: OfficeReportCategory) {
-  if (type === "health_check") {
-    return "Health Check";
+  if (type === "machine_maintenance") {
+    return "Machine Maintenance Report";
   }
 
   if (type === "service_report") {
@@ -115,8 +115,8 @@ export function VesselDetailPage() {
       (m) => m.latestReportType === "service_report" && m.latestKnownStatus === "down"
     ).length;
 
-    const preventiveDueSoon = vesselMachines.filter((m) => {
-      if (!m.latestReportDate || m.latestReportType !== "health_check") {
+    const machineMaintenanceDueSoon = vesselMachines.filter((m) => {
+      if (!m.latestReportDate || m.latestReportType !== "machine_maintenance") {
         return true;
       }
 
@@ -136,7 +136,7 @@ export function VesselDetailPage() {
       downMachines,
       unknownMachines,
       availability,
-      preventiveDueSoon,
+      machineMaintenanceDueSoon,
       serviceReportOpen,
     };
   }, [vesselMachines]);
@@ -209,9 +209,9 @@ export function VesselDetailPage() {
         </div>
 
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Preventive Due Soon</p>
+          <p className="text-sm text-slate-500">Maintenance Due Soon</p>
           <p className="mt-3 text-3xl font-semibold text-slate-900">
-            {metrics.preventiveDueSoon}
+            {metrics.machineMaintenanceDueSoon}
           </p>
         </div>
 

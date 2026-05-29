@@ -29,7 +29,7 @@ type AiGenerationLocationState =
       aiReport: AiDailyReport;
     }
   | {
-      reportType: "health_check";
+      reportType: "machine_maintenance";
       sourceReport: unknown;
       aiReport: unknown;
     };

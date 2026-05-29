@@ -1,4 +1,8 @@
-export type OfficeReportCategory = "health_check" | "service_report" | "cfr" | "daily";
+export type OfficeReportCategory =
+  | "machine_maintenance"
+  | "service_report"
+  | "cfr"
+  | "daily";
 
 export type OfficeMachine = {
   id: string;
@@ -39,7 +43,7 @@ export type OfficeMachineSummary = {
   latestReportDate?: string;
   latestReportType?: OfficeReportCategory;
   latestKnownStatus?: "online" | "down" | "unknown";
-  preventiveReportCount: number;
+  machineMaintenanceReportCount: number;
   serviceReportDraftCount?: number;
   cfrDraftCount: number;
   dailyDraftCount?: number;

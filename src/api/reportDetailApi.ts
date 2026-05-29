@@ -1,17 +1,19 @@
 import type {
   CfrDraftDetail,
   DailyReportDetail,
-  PreventiveReportDetail,
+  MachineMaintenanceReportDetail,
   ServiceReportDetail,
 } from "../types/report";
 import { API_BASE_URL } from "./config";
 
-export async function getHealthCheckReportById(id: string): Promise<PreventiveReportDetail> {
-  const response = await fetch(`${API_BASE_URL}/api/reports/preventive/${id}`);
+export async function getMachineMaintenanceReportById(
+  id: string
+): Promise<MachineMaintenanceReportDetail> {
+  const response = await fetch(`${API_BASE_URL}/api/reports/machine_maintenance/${id}`);
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Failed to load health check ${id}: ${text}`);
+    throw new Error(`Failed to load machine maintenance report ${id}: ${text}`);
   }
 
   return response.json();

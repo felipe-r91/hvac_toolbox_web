@@ -11,7 +11,7 @@ type CustomerReport = CustomerReportResponse;
 type CustomerReportType = NonNullable<CustomerReportResponse["sourceReportType"]>;
 
 function reportTypeClasses(type?: CustomerReportType) {
-  if (type === "health_check") {
+  if (type === "machine_maintenance") {
     return "bg-blue-100 text-blue-800";
   }
 
@@ -31,7 +31,7 @@ function reportTypeClasses(type?: CustomerReportType) {
 }
 
 function reportTypeLabel(type?: CustomerReportType) {
-  if (type === "health_check") return "Health Check";
+  if (type === "machine_maintenance") return "Machine Maintenance Report";
   if (type === "service_report") return "Service Report";
   if (type === "cfr") return "CFR";
   if (type === "daily" || type === "daily_report") return "Daily Report";
@@ -192,7 +192,7 @@ export function ReportsPage() {
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
             >
               <option value="all">All report types</option>
-              <option value="health_check">Health Check</option>
+              <option value="machine_maintenance">Machine Maintenance Report</option>
               <option value="service_report">Service Report</option>
               <option value="daily_report">Daily Report</option>
               <option value="cfr">CFR</option>

@@ -25,7 +25,7 @@ function typeLabel(type: DraftReportType) {
   if (type === "cfr") return "CFR";
   if (type === "service_report") return "Service Report";
   if (type === "daily") return "Daily Report";
-  return "Health Check";
+  return "Machine Maintenance Report";
 }
 
 function typeClasses(type: DraftReportType) {
@@ -36,6 +36,10 @@ function typeClasses(type: DraftReportType) {
 }
 
 function reportTypePath(type: DraftReportType) {
+  if (type === "machine_maintenance") {
+    return "machine_maintenance";
+  }
+
   return type === "service_report" ? "service-report" : type;
 }
 
@@ -138,7 +142,7 @@ export function AiGenerationPage() {
   }, [drafts, search, vesselFilter, reportTypeFilter]);
 
   async function handleGenerate(draft: DraftReportRow) {
-    if (draft.type === "preventive") {
+    if (draft.type === "machine_maintenance") {
       return;
     }
 
@@ -260,7 +264,7 @@ export function AiGenerationPage() {
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-md outline-none"
             >
               <option value="all">All report types</option>
-              <option value="preventive">Health Check</option>
+              <option value="machine_maintenance">Machine Maintenance Report</option>
               <option value="service_report">Service Report</option>
               <option value="daily">Daily Report</option>
               <option value="cfr">CFR</option>
@@ -319,7 +323,7 @@ export function AiGenerationPage() {
             <tbody>
               {filteredDrafts.length > 0 ? (
                 filteredDrafts.map((draft) => {
-                  const isPreventive = draft.type === "preventive";
+                  const isMachineMaintenance = draft.type === "machine_maintenance";
                   const isGenerating = generatingId === draft.id;
 
                   return (
@@ -359,7 +363,7 @@ export function AiGenerationPage() {
                         <button
                           type="button"
                           onClick={() => handleGenerate(draft)}
-                          disabled={isPreventive || isGenerating}
+                          disabled={isMachineMaintenance || isGenerating}
                           className="inline-flex w-fit items-center justify-center gap-2 rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isGenerating ? (
@@ -367,7 +371,7 @@ export function AiGenerationPage() {
                           ) : (
                             <FaMagic />
                           )}
-                          {isPreventive
+                          {isMachineMaintenance
                             ? "Coming soon"
                             : isGenerating
                             ? "Generating..."

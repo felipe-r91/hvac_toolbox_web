@@ -16,7 +16,7 @@ function statusClasses(status: "online" | "down" | "unknown") {
 }
 
 function reportTypeClasses(type: OfficeReportCategory) {
-  if (type === "health_check") {
+  if (type === "machine_maintenance") {
     return "bg-blue-100 text-blue-800";
   }
 
@@ -32,7 +32,7 @@ function reportTypeClasses(type: OfficeReportCategory) {
 }
 
 function reportTypeLabel(type: OfficeReportCategory) {
-  if (type === "health_check") return "Health Check";
+  if (type === "machine_maintenance") return "Machine Maintenance Report";
   if (type === "service_report") return "Service Report";
   if (type === "daily") return "Daily Report";
   return "CFR";
@@ -74,50 +74,52 @@ type DisplayTimelineItem =
   }
   | {
     kind: "linked";
-    healthCheck: MachineTimelineItem;
+    machineMaintenanceReport: MachineTimelineItem;
     serviceReport: MachineTimelineItem;
     date: string;
   };
 
 function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem[] {
-  const healthChecks = items.filter((item) => item.reportCategory === "health_check");
+  const machineMaintenanceReports = items.filter(
+    (item) => item.reportCategory === "machine_maintenance"
+  );
   const serviceReports = items.filter((item) => item.reportCategory === "service_report");
   const cfr = items.filter((item) => item.reportCategory === "cfr");
   const daily = items.filter((item) => item.reportCategory === "daily");
 
-  const serviceReportBySourcePreventiveId = new Map<string, MachineTimelineItem>();
+  const serviceReportBySourceMachineMaintenanceId = new Map<string, MachineTimelineItem>();
   const serviceReportById = new Map(serviceReports.map((item) => [item.id, item]));
   const linkedServiceReportIds = new Set<string>();
 
   serviceReports.forEach((item) => {
-    if (item.sourcePreventiveReportId) {
-      serviceReportBySourcePreventiveId.set(item.sourcePreventiveReportId, item);
+    if (item.sourceMachineMaintenanceReportId) {
+      serviceReportBySourceMachineMaintenanceId.set(item.sourceMachineMaintenanceReportId, item);
     }
   });
 
   const merged: DisplayTimelineItem[] = [];
 
-  healthChecks.forEach((healthCheckItem) => {
+  machineMaintenanceReports.forEach((machineMaintenanceItem) => {
     const linkedServiceReport =
-      (healthCheckItem.linkedServiceReportDraftId
-        ? serviceReportById.get(healthCheckItem.linkedServiceReportDraftId)
+      (machineMaintenanceItem.linkedServiceReportDraftId
+        ? serviceReportById.get(machineMaintenanceItem.linkedServiceReportDraftId)
         : undefined) ||
-      serviceReportBySourcePreventiveId.get(healthCheckItem.id);
+      serviceReportBySourceMachineMaintenanceId.get(machineMaintenanceItem.id);
 
     if (linkedServiceReport) {
       linkedServiceReportIds.add(linkedServiceReport.id);
 
       merged.push({
         kind: "linked",
-        healthCheck: healthCheckItem,
+        machineMaintenanceReport: machineMaintenanceItem,
         serviceReport: linkedServiceReport,
-        date: linkedServiceReport.date || healthCheckItem.date,
+        date: linkedServiceReport.date || machineMaintenanceItem.date,
       });
     } else {
       merged.push({
         kind: "single",
-        item: healthCheckItem,
-        date: healthCheckItem.date,
+        item: machineMaintenanceItem,
+        date: machineMaintenanceItem.date,
       });
     }
   });
@@ -154,8 +156,8 @@ function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem
 }
 
 function getReportLink(item: MachineTimelineItem) {
-  if (item.reportCategory === "health_check") {
-    return `/reports/${item.id}`;
+  if (item.reportCategory === "machine_maintenance") {
+    return `/machine-maintenance-reports/${item.id}`;
   }
 
   if (item.reportCategory === "service_report") {
@@ -170,8 +172,8 @@ function getReportLink(item: MachineTimelineItem) {
 }
 
 function getReportLinkLabel(item: MachineTimelineItem) {
-  if (item.reportCategory === "health_check") {
-    return "Open health check";
+  if (item.reportCategory === "machine_maintenance") {
+    return "Open machine maintenance report";
   }
 
   if (item.reportCategory === "service_report") {
@@ -343,7 +345,7 @@ export function MachineDetailPage() {
               </div>
 
               <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
-                HC: {machine.preventiveReportCount} · SR:{" "}
+                MMR: {machine.machineMaintenanceReportCount} · SR:{" "}
                 {machine.serviceReportDraftCount ?? 0} · CFR: {machine.cfrDraftCount}
                 {machine.dailyDraftCount !== undefined ? ` · Daily: ${machine.dailyDraftCount}` : ""}
               </div>
@@ -453,13 +455,13 @@ export function MachineDetailPage() {
 
                             <button
                               onClick={() => {
-                                setTypeFilter("health_check");
+                                setTypeFilter("machine_maintenance");
                                 setIsTypeMenuOpen(false);
                               }}
                               className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
                             >
                               <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                              Health Check
+                              Machine Maintenance Report
                             </button>
 
                             <button
@@ -523,8 +525,8 @@ export function MachineDetailPage() {
                       const item =
                         entry.kind === "linked" ? entry.serviceReport : entry.item;
 
-                      const linkedHealthCheck =
-                        entry.kind === "linked" ? entry.healthCheck : null;
+                      const linkedMachineMaintenanceReport =
+                        entry.kind === "linked" ? entry.machineMaintenanceReport : null;
 
                       const failureLabel = buildRecurringFailureLabel(item);
 
@@ -532,7 +534,7 @@ export function MachineDetailPage() {
                         <tr
                           key={
                             entry.kind === "linked"
-                              ? `linked-${entry.healthCheck.id}-${entry.serviceReport.id}`
+                              ? `linked-${entry.machineMaintenanceReport.id}-${entry.serviceReport.id}`
                               : `${item.reportCategory}-${item.id}`
                           }
                           className="border-t border-slate-200 hover:bg-slate-50"
@@ -551,9 +553,9 @@ export function MachineDetailPage() {
                                 {reportTypeLabel(item.reportCategory)}
                               </span>
 
-                              {linkedHealthCheck ? (
+                              {linkedMachineMaintenanceReport ? (
                                 <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
-                                  Linked Health Check
+                                  Linked Machine Maintenance Report
                                 </span>
                               ) : null}
                             </div>
@@ -605,12 +607,12 @@ export function MachineDetailPage() {
                                 {getReportLinkLabel(item)}
                               </Link>
 
-                              {linkedHealthCheck ? (
+                              {linkedMachineMaintenanceReport ? (
                                 <Link
-                                  to={`/reports/${linkedHealthCheck.id}`}
+                                  to={`/machine-maintenance-reports/${linkedMachineMaintenanceReport.id}`}
                                   className="w-fit rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
                                 >
-                                  Open health check
+                                  Open machine maintenance report
                                 </Link>
                               ) : null}
                             </div>

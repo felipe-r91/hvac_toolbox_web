@@ -1,6 +1,10 @@
 import { API_BASE_URL } from "./config";
 
-export type DraftReportType = "cfr" | "service_report" | "preventive" | "daily";
+export type DraftReportType =
+  | "cfr"
+  | "service_report"
+  | "machine_maintenance"
+  | "daily";
 
 export type CfrDraftSummaryResponse = {
   id: string;
@@ -31,7 +35,7 @@ export type ServiceReportDraftSummaryResponse = {
   reportCategory: string;
 };
 
-export type PreventiveReportSummaryResponse = {
+export type MachineMaintenanceReportSummaryResponse = {
   id: string;
   vesselName: string;
   machineTag: string;
@@ -209,10 +213,10 @@ export async function getServiceReportDrafts(): Promise<
   return request<ServiceReportDraftSummaryResponse[]>("/api/reports/service-report");
 }
 
-export async function getPreventiveReports(): Promise<
-  PreventiveReportSummaryResponse[]
+export async function getMachineMaintenanceReports(): Promise<
+  MachineMaintenanceReportSummaryResponse[]
 > {
-  return request<PreventiveReportSummaryResponse[]>("/api/reports/preventive");
+  return request<MachineMaintenanceReportSummaryResponse[]>("/api/reports/machine_maintenance");
 }
 
 export async function getDailyDrafts(): Promise<DailyDraftSummaryResponse[]> {
@@ -220,10 +224,10 @@ export async function getDailyDrafts(): Promise<DailyDraftSummaryResponse[]> {
 }
 
 export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
-  const [cfrDrafts, serviceReportDrafts, preventiveReports, dailyDrafts] = await Promise.all([
+  const [cfrDrafts, serviceReportDrafts, machineMaintenanceReports, dailyDrafts] = await Promise.all([
     getCfrDrafts(),
     getServiceReportDrafts(),
-    getPreventiveReports(),
+    getMachineMaintenanceReports(),
     getDailyDrafts(),
   ]);
 
@@ -249,15 +253,15 @@ export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
     reportCategory: draft.reportCategory,
   }));
 
-  const preventiveRows: DraftReportRow[] = preventiveReports.map((report) => ({
+  const machineMaintenanceRows: DraftReportRow[] = machineMaintenanceReports.map((report) => ({
     id: report.id,
     vessel: safeValue(report.vesselName),
     machine: machineLabel(report.machineTag, report.machineModel),
     machineLocation: safeValue(report.machineLocation),
-    type: "preventive",
+    type: "machine_maintenance",
     date: report.completedAt,
     status: safeValue(report.overallStatus),
-    reportCategory: "health_check",
+    reportCategory: "machine_maintenance",
   }));
 
   const dailyRows: DraftReportRow[] = dailyDrafts.map((draft) => ({
@@ -271,10 +275,14 @@ export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
     reportCategory: draft.reportCategory || "daily",
   }));
 
-  return [...cfrRows, ...serviceReportRows, ...preventiveRows, ...dailyRows].sort(sortByNewestDate);
+  return [...cfrRows, ...serviceReportRows, ...machineMaintenanceRows, ...dailyRows].sort(sortByNewestDate);
 }
 
 function apiReportTypePath(type: DraftReportType) {
+  if (type === "machine_maintenance") {
+    return "machine_maintenance";
+  }
+
   return type === "service_report" ? "service-report" : type;
 }
 
@@ -282,8 +290,8 @@ export async function generateAiReport(
   type: DraftReportType,
   id: string
 ): Promise<AiGeneratedReportResponse> {
-  if (type === "preventive") {
-    throw new Error("Health Check AI generation is not implemented yet.");
+  if (type === "machine_maintenance") {
+    throw new Error("Machine Maintenance Report AI generation is not implemented yet.");
   }
 
   return request<AiGeneratedReportResponse>(

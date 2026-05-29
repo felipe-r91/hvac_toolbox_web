@@ -4,7 +4,7 @@ import { API_BASE_URL } from "./config";
 
 export type MachineTimelineItem = {
   id: string;
-  type: "preventive" | "service_report" | "cfr" | "daily";
+  type: "machine_maintenance" | "service_report" | "cfr" | "daily";
   reportCategory: OfficeReportCategory;
   date: string;
   status: "online" | "down" | "unknown";
@@ -14,7 +14,7 @@ export type MachineTimelineItem = {
   failureMode?: string;
   failureCode?: string;
   linkedServiceReportDraftId?: string;
-  sourcePreventiveReportId?: string;
+  sourceMachineMaintenanceReportId?: string;
 };
 
 export async function getMachineSummaryById(

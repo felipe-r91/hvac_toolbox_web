@@ -68,7 +68,8 @@ export function MachineMaintenanceReportDetailPage() {
   const headerPhoto = report.machinePhotoPreviewUrl || "";
 
   return (
-    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
+    <section className="h-[calc(100vh-8.5rem)] min-h-0 overflow-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="space-y-4">
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
           <div>
@@ -137,8 +138,6 @@ export function MachineMaintenanceReportDetailPage() {
         </div>
       </section>
 
-      <section className="min-h-0 flex-1 overflow-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="space-y-4">
           {report.overallStatus === "down" ? (
             <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
               <h2 className="text-lg font-semibold text-slate-900">
@@ -228,8 +227,7 @@ export function MachineMaintenanceReportDetailPage() {
               </table>
             </div>
           </section>
-        </div>
-      </section>
+      </div>
     </section>
   );
 }

@@ -5,6 +5,7 @@ import {
   getMachineTimeline,
   type MachineTimelineItem,
 } from "../../api/machineDetailApi";
+import { API_BASE_URL } from "../../api/config";
 import type { OfficeMachineSummary, OfficeReportCategory } from "../../types/machine";
 
 function statusClasses(status: "online" | "down" | "unknown") {
@@ -36,6 +37,12 @@ function reportTypeLabel(type: OfficeReportCategory) {
   if (type === "service_report") return "Service";
   if (type === "daily") return "Daily";
   return "CFR";
+}
+
+function resolvePhotoUrl(url?: string) {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE_URL}${url}`;
 }
 
 function formatFailureCode(code?: string) {
@@ -295,44 +302,60 @@ export function MachineDetailPage() {
     <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex-1">
-            <h1 className="text-2xl font-semibold text-slate-900">
-              {machine.machineTag}
-            </h1>
+          <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="flex h-36 w-full shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200 sm:w-44 lg:h-40 lg:w-52">
+              {machine.machinePhotoPreviewUrl ? (
+                <img
+                  src={resolvePhotoUrl(machine.machinePhotoPreviewUrl)}
+                  alt={`${machine.machineTag} ID`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="px-4 text-center text-xs text-slate-400">
+                  No machine ID photo
+                </div>
+              )}
+            </div>
 
-            <p className="mt-2 text-sm text-slate-500">
-              {machine.vesselName} · {machine.model} · {machine.starterType} ·{" "}
-              {machine.type}
-            </p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-semibold text-slate-900">
+                {machine.machineTag}
+              </h1>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Location: {machine.location}
-            </p>
+              <p className="mt-2 text-sm text-slate-500">
+                {machine.vesselName} · {machine.model} · {machine.starterType} ·{" "}
+                {machine.type}
+              </p>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Serial Number: {machine.serialNumber}
-            </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Location: {machine.location}
+              </p>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${statusClasses(
-                  machine.latestKnownStatus || "unknown"
-                )}`}
-              >
-                {machine.latestKnownStatus || "unknown"}
-              </span>
+              <p className="mt-1 text-sm text-slate-500">
+                Serial Number: {machine.serialNumber}
+              </p>
 
-              <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
-                Last:{" "}
-                {machine.latestReportDate
-                  ? new Date(machine.latestReportDate).toLocaleString()
-                  : "—"}
-              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${statusClasses(
+                    machine.latestKnownStatus || "unknown"
+                  )}`}
+                >
+                  {machine.latestKnownStatus || "unknown"}
+                </span>
 
-              <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
-                MMR: {machine.machineMaintenanceReportCount} · SR:{" "}
-                {machine.serviceReportDraftCount ?? 0} · CFR: {machine.cfrDraftCount}
-                {machine.dailyDraftCount !== undefined ? ` · Daily: ${machine.dailyDraftCount}` : ""}
+                <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
+                  Last:{" "}
+                  {machine.latestReportDate
+                    ? new Date(machine.latestReportDate).toLocaleString()
+                    : "—"}
+                </div>
+
+                <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
+                  MMR: {machine.machineMaintenanceReportCount} · SR:{" "}
+                  {machine.serviceReportDraftCount ?? 0} · CFR: {machine.cfrDraftCount}
+                  {machine.dailyDraftCount !== undefined ? ` · Daily: ${machine.dailyDraftCount}` : ""}
+                </div>
               </div>
             </div>
           </div>

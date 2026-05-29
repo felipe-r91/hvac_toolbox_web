@@ -43,6 +43,7 @@ export type OfficeMachineSummary = {
   latestReportDate?: string;
   latestReportType?: OfficeReportCategory;
   latestKnownStatus?: "online" | "down" | "unknown";
+  machinePhotoPreviewUrl?: string;
   machineMaintenanceReportCount: number;
   serviceReportDraftCount?: number;
   cfrDraftCount: number;

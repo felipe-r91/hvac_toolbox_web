@@ -122,12 +122,12 @@ export function MachineMaintenanceReportDetailPage() {
             </div>
           </div>
 
-          <div className="flex min-h-64 items-center justify-center overflow-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">
+          <div className="flex h-44 items-center justify-center overflow-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200 lg:h-full lg:max-h-56">
             {headerPhoto ? (
               <img
                 src={resolvePhotoUrl(headerPhoto)}
                 alt={report.machineTag}
-                className="h-full max-h-80 w-full object-cover"
+                className="h-full w-full object-cover"
               />
             ) : (
               <div className="px-6 text-center text-sm text-slate-400">

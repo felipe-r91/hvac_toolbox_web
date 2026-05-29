@@ -386,8 +386,8 @@ export function CfrReportDetailPage() {
           <LoadingImage
             src={resolvePhotoUrl(headerPhoto)}
             alt={report.machineTag}
-            wrapperClassName="flex min-h-64 items-center justify-center rounded-3xl ring-1 ring-slate-200"
-            className="h-full max-h-80 w-full object-cover"
+            wrapperClassName="flex h-44 items-center justify-center rounded-3xl ring-1 ring-slate-200 lg:h-full lg:max-h-56"
+            className="h-full w-full object-cover"
             emptyText="No machine photo available"
           />
         </div>

@@ -420,7 +420,11 @@ function ReportFooter({
 }) {
   return (
     <footer className="mt-auto bg-white pt-5">
-      <div className="h-0.5 bg-linear-to-r from-[#003594] via-[#00A9E0] to-[#78BE20]" />
+      <div className="flex h-0.5 overflow-hidden">
+        <div className="h-full flex-[5] bg-[#003594]" />
+        <div className="h-full flex-[3] bg-[#00A9E0]" />
+        <div className="h-full flex-[2] bg-[#78BE20]" />
+      </div>
 
       <div className="px-5 py-2 text-[8px] leading-tight text-slate-500 md:flex md:items-center md:justify-between">
         <div className="space-y-1">
@@ -631,7 +635,11 @@ function ReportHeader({
         </div>
       </div>
 
-      <div className="h-3 bg-linear-to-r from-[#003594] via-[#00A9E0] to-[#78BE20]" />
+      <div className="flex h-3 overflow-hidden">
+        <div className="h-full flex-[5] bg-[#003594]" />
+        <div className="h-full flex-[3] bg-[#00A9E0]" />
+        <div className="h-full flex-[2] bg-[#78BE20]" />
+      </div>
 
       <div className="border-t border-slate-300 bg-white px-4 py-3">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

@@ -30,10 +30,10 @@ type SectionId =
   | "service"
   | "equipment"
   | "summary"
-  | "alarms"
   | "photos"
   | "furtherAction"
   | "ehs"
+  | `alarms-${number}`
   | `activities-${number}`;
 
 type ReportPage = {
@@ -235,7 +235,19 @@ function isImageReference(value?: string) {
   );
 }
 
-function buildInitialPages(activityChunkCount: number, includePhotos: boolean): ReportPage[] {
+function buildInitialPages(
+  alarmChunkCount: number,
+  activityChunkCount: number,
+  includePhotos: boolean
+): ReportPage[] {
+  const alarmPages: ReportPage[] = Array.from(
+    { length: Math.max(alarmChunkCount - 1, 0) },
+    (_, index) => ({
+      id: `page-alarms-${index + 2}`,
+      sections: [`alarms-${index + 1}`],
+    })
+  );
+
   const activityPages: ReportPage[] = Array.from(
     { length: Math.max(activityChunkCount, 1) },
     (_, index) => ({
@@ -246,8 +258,8 @@ function buildInitialPages(activityChunkCount: number, includePhotos: boolean): 
 
   return [
     { id: "page-1", sections: ["vessel", "service"] },
-    { id: "page-2", sections: ["equipment", "summary"] },
-    { id: "page-3", sections: ["alarms"] },
+    { id: "page-2", sections: ["equipment", "summary", "alarms-0"] },
+    ...alarmPages,
     ...activityPages,
     ...(includePhotos ? [{ id: "page-photos", sections: ["photos"] as SectionId[] }] : []),
     { id: "page-final", sections: ["furtherAction", "ehs"] },
@@ -677,6 +689,11 @@ function normalizeActivityChunks(
   return nextChunks.length > 0 ? nextChunks : [[]];
 }
 
+function normalizeAlarmChunks(chunks: Required<MaintenanceAlarmItem>[][]) {
+  const nextChunks = chunks.filter((chunk) => chunk.length > 0);
+  return nextChunks.length > 0 ? nextChunks : [[]];
+}
+
 function normalizeActivities(
   aiActivities?: MaintenanceActivityItem[],
   sourceTasks?: SourceMaintenanceTask[]
@@ -969,9 +986,9 @@ export default function MachineMaintenanceReportUI({
 
   const [isPrintPreview, setIsPrintPreview] = React.useState(false);
   const isEditing = !isPrintPreview;
-  const [alarms, setAlarms] = React.useState<Required<MaintenanceAlarmItem>[]>(
-    report.alarms
-  );
+  const [alarmChunks, setAlarmChunks] = React.useState<
+    Required<MaintenanceAlarmItem>[][]
+  >(() => [report.alarms]);
   const [activityChunks, setActivityChunks] = React.useState<
     Required<MaintenanceActivityItem>[][]
   >(() => [report.activities]);
@@ -979,20 +996,25 @@ export default function MachineMaintenanceReportUI({
   const reportRef = React.useRef<HTMLElement | null>(null);
   const pageBodyRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const [pages, setPages] = React.useState<ReportPage[]>(() =>
-    buildInitialPages(activityChunks.length, Boolean(sourceReport.photos?.length))
+    buildInitialPages(
+      alarmChunks.length,
+      activityChunks.length,
+      Boolean(sourceReport.photos?.length)
+    )
   );
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
-  const hasActiveAlarm = alarms.some(
+  const hasActiveAlarm = alarmChunks.flat().some(
     (alarm) => alarm.status.toLowerCase() !== "solved"
   );
 
   React.useEffect(() => {
-    setAlarms(report.alarms);
+    setAlarmChunks([report.alarms]);
     setActivityChunks([report.activities]);
     setPages(
       buildInitialPages(
+        1,
         1,
         Boolean(sourceReport.photos?.length)
       )
@@ -1004,11 +1026,42 @@ export default function MachineMaintenanceReportUI({
       let nextPages = currentPages.map((page) => ({
         ...page,
         sections: page.sections.filter((section) => {
+          if (section.startsWith("alarms-")) {
+            const chunkIndex = Number(section.replace("alarms-", ""));
+            return chunkIndex < alarmChunks.length;
+          }
+
           if (!section.startsWith("activities-")) return true;
           const chunkIndex = Number(section.replace("activities-", ""));
           return chunkIndex < activityChunks.length;
         }),
       }));
+
+      for (let index = 0; index < alarmChunks.length; index += 1) {
+        const sectionId = `alarms-${index}` as SectionId;
+        const hasSection = nextPages.some((page) =>
+          page.sections.includes(sectionId)
+        );
+
+        if (hasSection) continue;
+
+        const firstActivityPageIndex = nextPages.findIndex((page) =>
+          page.sections.some((section) => section.startsWith("activities-"))
+        );
+        const finalPageIndex = nextPages.findIndex((page) => page.id === "page-final");
+        const insertIndex =
+          firstActivityPageIndex === -1
+            ? finalPageIndex === -1
+              ? nextPages.length
+              : finalPageIndex
+            : firstActivityPageIndex;
+
+        nextPages = [
+          ...nextPages.slice(0, insertIndex),
+          { id: `page-alarms-${index + 1}`, sections: [sectionId] },
+          ...nextPages.slice(insertIndex),
+        ];
+      }
 
       for (let index = 0; index < activityChunks.length; index += 1) {
         const sectionId = `activities-${index}` as SectionId;
@@ -1037,7 +1090,7 @@ export default function MachineMaintenanceReportUI({
 
       return nextPages;
     });
-  }, [activityChunks.length]);
+  }, [alarmChunks.length, activityChunks.length]);
 
   React.useLayoutEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -1046,6 +1099,33 @@ export default function MachineMaintenanceReportUI({
         const isOverflowing = body && body.scrollHeight > body.clientHeight + 2;
 
         if (!isOverflowing) continue;
+
+        const alarmSection = [...page.sections]
+          .reverse()
+          .find((section) => section.startsWith("alarms-"));
+
+        if (alarmSection) {
+          const chunkIndex = Number(alarmSection.replace("alarms-", ""));
+
+          setAlarmChunks((currentChunks) => {
+            const sourceChunk = currentChunks[chunkIndex];
+            if (!sourceChunk || sourceChunk.length <= 1) return currentChunks;
+
+            const nextChunks = currentChunks.map((chunk) => [...chunk]);
+            const movedAlarm = nextChunks[chunkIndex].pop();
+            if (!movedAlarm) return currentChunks;
+
+            if (nextChunks[chunkIndex + 1]) {
+              nextChunks[chunkIndex + 1].unshift(movedAlarm);
+            } else {
+              nextChunks[chunkIndex + 1] = [movedAlarm];
+            }
+
+            return normalizeAlarmChunks(nextChunks);
+          });
+
+          break;
+        }
 
         const activitySection = [...page.sections]
           .reverse()
@@ -1077,7 +1157,7 @@ export default function MachineMaintenanceReportUI({
     }, 80);
 
     return () => window.clearTimeout(timeout);
-  }, [activityChunks, pages, alarms, isPrintPreview]);
+  }, [alarmChunks, activityChunks, pages, isPrintPreview]);
 
   function handleDragEnd(event: DragEndEvent) {
     if (!isEditing) return;
@@ -1088,13 +1168,16 @@ export default function MachineMaintenanceReportUI({
     if (!targetPageId || !targetPageId.startsWith("page-")) return;
 
     setPages((currentPages) => {
-      const nextPages = currentPages.map((page) => ({
+      let nextPages = currentPages.map((page) => ({
         ...page,
         sections: page.sections.filter((section) => section !== activeSectionId),
       }));
       const targetPage = nextPages.find((page) => page.id === targetPageId);
       if (!targetPage) return currentPages;
       targetPage.sections.push(activeSectionId);
+      nextPages = nextPages.filter(
+        (page, index) => index === 0 || page.sections.length > 0
+      );
       return nextPages;
     });
   }
@@ -1238,6 +1321,87 @@ export default function MachineMaintenanceReportUI({
     );
   }
 
+  function renderAlarmPage(alarmChunk: Required<MaintenanceAlarmItem>[], chunkIndex: number) {
+    const alarmOffset = alarmChunks
+      .slice(0, chunkIndex)
+      .reduce((total, chunk) => total + chunk.length, 0);
+
+    return (
+      <Section
+        icon={FaExclamationTriangle}
+        title={
+          chunkIndex === 0
+            ? "Alarms / Abnormal Findings"
+            : "Alarms / Abnormal Findings Contd."
+        }
+        right={
+          isEditing ? (
+            <button
+              type="button"
+              onClick={() => {
+                setAlarmChunks((currentChunks) => [
+                  [
+                    ...currentChunks.flat(),
+                    {
+                      description: "New alarm / abnormal finding",
+                      status: "Open",
+                    },
+                  ],
+                ]);
+                setPages(
+                  buildInitialPages(
+                    1,
+                    activityChunks.length,
+                    Boolean(sourceReport.photos?.length)
+                  )
+                );
+              }}
+              className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
+            >
+              Add alarm
+            </button>
+          ) : null
+        }
+      >
+        {alarmChunk.length > 0 ? (
+          <ul className="space-y-2">
+            {alarmChunk.map((alarm, index) => (
+              <AlarmCard
+                key={`${alarm.description}-${chunkIndex}-${index}`}
+                alarm={alarm}
+                isEditing={isEditing}
+                onDelete={() => {
+                  setAlarmChunks((currentChunks) => {
+                    const flatAlarms = currentChunks.flat();
+                    const realIndex =
+                      currentChunks
+                        .slice(0, chunkIndex)
+                        .reduce((total, chunk) => total + chunk.length, 0) +
+                      index;
+                    const nextAlarms = flatAlarms.filter(
+                      (_, itemIndex) => itemIndex !== realIndex
+                    );
+
+                    return [nextAlarms];
+                  });
+                  setPages(
+                    buildInitialPages(
+                      1,
+                      activityChunks.length,
+                      Boolean(sourceReport.photos?.length)
+                    )
+                  );
+                }}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-500">No alarms reported.</p>
+        )}
+      </Section>
+    );
+  }
+
   function renderPhotosPage() {
     return (
       <Section icon={FaCamera} title="Photo Evidence">
@@ -1276,6 +1440,11 @@ export default function MachineMaintenanceReportUI({
   }
 
   function renderSection(sectionId: SectionId) {
+    if (sectionId.startsWith("alarms-")) {
+      const chunkIndex = Number(sectionId.replace("alarms-", ""));
+      return renderAlarmPage(alarmChunks[chunkIndex] || [], chunkIndex);
+    }
+
     if (sectionId.startsWith("activities-")) {
       const chunkIndex = Number(sectionId.replace("activities-", ""));
       return renderActivityPage(activityChunks[chunkIndex] || [], chunkIndex);
@@ -1358,52 +1527,6 @@ export default function MachineMaintenanceReportUI({
                 {report.executiveSummary}
               </EditableText>
             </div>
-          </Section>
-        );
-
-      case "alarms":
-        return (
-          <Section
-            icon={FaExclamationTriangle}
-            title="Alarms / Abnormal Findings"
-            right={
-              isEditing ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAlarms((current) => [
-                      ...current,
-                      {
-                        description: "New alarm / abnormal finding",
-                        status: "Open",
-                      },
-                    ])
-                  }
-                  className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
-                >
-                  Add alarm
-                </button>
-              ) : null
-            }
-          >
-            {alarms.length > 0 ? (
-              <ul className="space-y-2">
-                {alarms.map((alarm, index) => (
-                  <AlarmCard
-                    key={`${alarm.description}-${index}`}
-                    alarm={alarm}
-                    isEditing={isEditing}
-                    onDelete={() =>
-                      setAlarms((current) =>
-                        current.filter((_, itemIndex) => itemIndex !== index)
-                      )
-                    }
-                  />
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-500">No alarms reported.</p>
-            )}
           </Section>
         );
 

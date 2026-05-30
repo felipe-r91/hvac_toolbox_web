@@ -1308,7 +1308,11 @@ export default function MachineMaintenanceReportUI({
                     return [nextActivities];
                   });
                   setPages(
-                    buildInitialPages(1, Boolean(sourceReport.photos?.length))
+                    buildInitialPages(
+                      alarmChunks.length,
+                      1,
+                      Boolean(sourceReport.photos?.length)
+                    )
                   );
                 }}
               />
@@ -1322,10 +1326,6 @@ export default function MachineMaintenanceReportUI({
   }
 
   function renderAlarmPage(alarmChunk: Required<MaintenanceAlarmItem>[], chunkIndex: number) {
-    const alarmOffset = alarmChunks
-      .slice(0, chunkIndex)
-      .reduce((total, chunk) => total + chunk.length, 0);
-
     return (
       <Section
         icon={FaExclamationTriangle}

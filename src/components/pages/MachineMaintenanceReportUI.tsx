@@ -295,7 +295,7 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
         <EditableText>{label}</EditableText>
       </p>
       <p className="mt-0.5 text-sm font-medium text-slate-900">
-        <EditableText>{value || "-"}</EditableText>
+        <EditableText>{value?.trim() || "--"}</EditableText>
       </p>
     </div>
   );
@@ -410,6 +410,10 @@ function SwappableImage({
   }
 
   return <img src={src} alt={alt} className={className} />;
+}
+
+function displayValue(value?: string) {
+  return value?.trim() || "--";
 }
 
 function ActivityStatusPill({ status }: { status?: string }) {
@@ -1498,7 +1502,7 @@ export default function MachineMaintenanceReportUI({
                 <div className="border-t border-slate-300 px-2 py-1.5">
                   <p className="text-[9px] uppercase text-slate-500">Unit</p>
                   <p className="text-[11px] font-semibold text-[#003594]">
-                    {report.equipment.unit}
+                    {displayValue(report.equipment.unit)}
                   </p>
                 </div>
               </div>
@@ -1510,9 +1514,11 @@ export default function MachineMaintenanceReportUI({
                 <InfoRow label="Oil Type" value={report.equipment.oil} />
                 <InfoRow label="Control System" value={report.equipment.controlSystem} />
                 <InfoRow label="Software Version" value={report.equipment.software} />
+                <InfoRow label="Run Hours" value="" />
+                <InfoRow label="Start Count" value="" />
                 <InfoRow label="Starter Type" value={report.equipment.starterType} />
-                <InfoRow label="Compressor Type" value={report.equipment.compressorType} />
-                <InfoRow label="Machine Type" value={report.equipment.systemType} />
+                <InfoRow label="Last Overhaul Hours" value="" />
+                <InfoRow label="Compressor Type" value={report.equipment.systemType} />
                 <InfoRow label="Mfg" value={report.equipment.manufacturer} />
               </div>
             </div>

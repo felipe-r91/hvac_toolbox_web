@@ -147,15 +147,56 @@ export type AiDailyReportResponse = {
   ehsStatement: string;
 };
 
+export type AiMachineMaintenanceReportResponse = {
+  reportNo: string;
+  title: string;
+  subtitle: string;
+  company: string;
+  branch: string;
+  date: string;
+  serviceOrder: string;
+  engineer: string;
+  projectManager: string;
+  location: string;
+  machineStatus: string;
+  maintenanceResult: string;
+  alarmStatus: string;
+  executiveSummary: string;
+  maintenanceSummary: string;
+  alarms: MachineMaintenanceAlarmItem[];
+  activities: MachineMaintenanceActivityItem[];
+  recommendations: string[];
+  furtherActionRequired: string;
+  ehsStatement: string;
+};
+
 export type ServiceAlarmItem = {
   description: string;
   status: string;
 };
 
+export type MachineMaintenanceAlarmItem = {
+  description: string;
+  status: string;
+};
+
+export type MachineMaintenanceActivityItem = {
+  category: string;
+  task: string;
+  tool: string;
+  status: string;
+  notes: string;
+  measuredValue: string;
+  unit: string;
+  completedAt: string;
+  photos: string[];
+};
+
 export type AiGeneratedReportResponse =
   | AiCustomerReportResponse
   | AiServiceReportResponse
-  | AiDailyReportResponse;
+  | AiDailyReportResponse
+  | AiMachineMaintenanceReportResponse;
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -280,7 +321,7 @@ export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
 
 function apiReportTypePath(type: DraftReportType) {
   if (type === "machine_maintenance") {
-    return "machine_maintenance";
+    return "machine-maintenance";
   }
 
   return type === "service_report" ? "service-report" : type;
@@ -290,10 +331,6 @@ export async function generateAiReport(
   type: DraftReportType,
   id: string
 ): Promise<AiGeneratedReportResponse> {
-  if (type === "machine_maintenance") {
-    throw new Error("Machine Maintenance Report AI generation is not implemented yet.");
-  }
-
   return request<AiGeneratedReportResponse>(
     `/api/ai-reports/${apiReportTypePath(type)}/${id}/generate`,
     {
@@ -329,6 +366,17 @@ export async function generateDailyAiReport(
 ): Promise<AiDailyReportResponse> {
   return request<AiDailyReportResponse>(
     `/api/ai-reports/daily/${draftId}/generate`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function generateMachineMaintenanceAiReport(
+  draftId: string
+): Promise<AiMachineMaintenanceReportResponse> {
+  return request<AiMachineMaintenanceReportResponse>(
+    `/api/ai-reports/machine-maintenance/${draftId}/generate`,
     {
       method: "POST",
     }

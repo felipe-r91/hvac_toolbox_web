@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { getMachineMaintenanceReportById } from "../../api/reportDetailApi";
 import type { MachineMaintenanceReportDetail } from "../../types/report";
 import { API_BASE_URL } from "../../api/config";
@@ -34,12 +34,100 @@ function formatFailureCode(code?: string) {
     .join(" ");
 }
 
+function LoadingImage({
+  src,
+  alt,
+  className = "",
+  wrapperClassName = "",
+  emptyText = "No image available",
+}: {
+  src?: string;
+  alt: string;
+  className?: string;
+  wrapperClassName?: string;
+  emptyText?: string;
+}) {
+  const [loadedSrc, setLoadedSrc] = useState("");
+  const [failedSrc, setFailedSrc] = useState("");
+  const isLoading = Boolean(src) && loadedSrc !== src && failedSrc !== src;
+  const hasError = Boolean(src) && failedSrc === src;
+
+  if (!src || hasError) {
+    return (
+      <div className={`flex items-center justify-center bg-slate-100 ${wrapperClassName}`}>
+        <div className="px-6 text-center text-sm text-slate-400">
+          {hasError ? "Image failed to load." : emptyText}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative overflow-hidden bg-slate-100 ${wrapperClassName}`}>
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-100 text-slate-400">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+          <p className="text-xs font-medium">Loading image...</p>
+        </div>
+      )}
+
+      <img
+        src={src}
+        alt={alt}
+        className={`${className} ${isLoading ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
+        onLoad={() => setLoadedSrc(src)}
+        onError={() => {
+          setFailedSrc(src);
+        }}
+      />
+    </div>
+  );
+}
+
+function AiGenerationProgress({
+  progress,
+  step,
+}: {
+  progress: number;
+  step: string;
+}) {
+  return (
+    <div className="mt-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            AI report generation
+          </p>
+          <p className="mt-1 text-sm font-medium text-slate-700">
+            {step || "Preparing AI generation..."}
+          </p>
+        </div>
+
+        <span className="shrink-0 rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+          {progress}%
+        </span>
+      </div>
+
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
+        <div
+          className="h-full rounded-full bg-slate-900 transition-all duration-500 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function MachineMaintenanceReportDetailPage() {
   const { reportId } = useParams();
+  const navigate = useNavigate();
 
   const [report, setReport] = useState<MachineMaintenanceReportDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiProgress, setAiProgress] = useState(0);
+  const [aiStep, setAiStep] = useState("");
 
   useEffect(() => {
     if (!reportId) return;
@@ -60,12 +148,92 @@ export function MachineMaintenanceReportDetailPage() {
     run();
   }, [reportId]);
 
+  useEffect(() => {
+    if (!aiLoading) return;
+
+    setAiProgress(8);
+    setAiStep("Preparing maintenance report data...");
+
+    const steps = [
+      { progress: 18, text: "Reading maintenance tasks..." },
+      { progress: 34, text: "Reviewing task notes and measured values..." },
+      { progress: 50, text: "Checking alarm and fault items..." },
+      { progress: 66, text: "Building maintenance activity summary..." },
+      { progress: 82, text: "Generating customer-ready maintenance report..." },
+      { progress: 92, text: "Formatting maintenance report sections..." },
+    ];
+
+    let index = 0;
+
+    const interval = window.setInterval(() => {
+      const step = steps[index];
+
+      if (!step) {
+        window.clearInterval(interval);
+        return;
+      }
+
+      setAiProgress((current) => Math.max(current, step.progress));
+      setAiStep(step.text);
+      index += 1;
+    }, 1100);
+
+    return () => window.clearInterval(interval);
+  }, [aiLoading]);
+
   if (loading) return <CardText text="Loading machine maintenance report..." />;
   if (error || !report) {
     return <CardText text={error || "Machine maintenance report not found."} error />;
   }
 
   const headerPhoto = report.machinePhotoPreviewUrl || "";
+
+  async function handleGenerateAiReport() {
+    if (!report?.id || aiLoading) return;
+
+    try {
+      setAiLoading(true);
+      setAiProgress(5);
+      setAiStep("Starting AI generation...");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/ai-reports/machine-maintenance/${report.id}/generate`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      setAiProgress(96);
+      setAiStep("Receiving generated maintenance report...");
+
+      const aiReport = await response.json();
+
+      setAiProgress(100);
+      setAiStep("Machine maintenance report generated successfully.");
+
+      window.setTimeout(() => {
+        navigate(`/ai-generation-service/machine-maintenance/${report.id}`, {
+          state: {
+            reportType: "machine_maintenance",
+            sourceReport: report,
+            aiReport,
+          },
+        });
+      }, 350);
+    } catch (err) {
+      console.error(err);
+      setAiStep("AI generation failed. Please try again.");
+      setAiProgress(0);
+    } finally {
+      window.setTimeout(() => {
+        setAiLoading(false);
+      }, 500);
+    }
+  }
 
   return (
     <section className="h-[calc(100vh-8.5rem)] min-h-0 overflow-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -98,43 +266,37 @@ export function MachineMaintenanceReportDetailPage() {
               </div>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
               <HeaderInfo label="Vessel" value={report.vesselName} />
               <HeaderInfo label="Machine" value={report.machineTag} />
-              <HeaderInfo
-                label="Model"
-                value={`${report.machineModel} · ${report.machineStarterType}`}
-              />
+              <HeaderInfo label="Model" value={report.machineModel} />
               <HeaderInfo label="Location" value={report.machineLocation} />
             </div>
 
             <div className="-mt-2.5 flex justify-end">
               <button
                 type="button"
-                onClick={() => {
-                  console.log("Generate AI Report", report);
-                }}
-                className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800 flex items-center justify-between gap-2"
-              > 
-              <VscSparkle size={24} />
-                Generate AI Report
+                onClick={handleGenerateAiReport}
+                disabled={aiLoading}
+                className="flex items-center justify-between gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                <VscSparkle size={24} />
+                {aiLoading ? "Generating..." : "Generate AI Report"}
               </button>
             </div>
-          </div>
 
-          <div className="flex h-44 items-center justify-center overflow-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200 lg:h-full lg:max-h-56">
-            {headerPhoto ? (
-              <img
-                src={resolvePhotoUrl(headerPhoto)}
-                alt={report.machineTag}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="px-6 text-center text-sm text-slate-400">
-                No machine photo available
-              </div>
+            {aiLoading && (
+              <AiGenerationProgress progress={aiProgress} step={aiStep} />
             )}
           </div>
+
+          <LoadingImage
+            src={resolvePhotoUrl(headerPhoto)}
+            alt={report.machineTag}
+            wrapperClassName="flex h-44 items-center justify-center rounded-3xl ring-1 ring-slate-200 lg:h-full lg:max-h-56"
+            className="h-full w-full object-cover"
+            emptyText="No machine photo available"
+          />
         </div>
       </section>
 

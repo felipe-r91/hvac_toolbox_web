@@ -20,6 +20,10 @@ import type {
   AiDailyReport,
   SourceDailyReport,
 } from "./DailyReportUI";
+import type {
+  AiMachineMaintenanceReport,
+  SourceMachineMaintenanceReport,
+} from "./MachineMaintenanceReportUI";
 
 function typeLabel(type: DraftReportType) {
   if (type === "cfr") return "CFR";
@@ -35,9 +39,17 @@ function typeClasses(type: DraftReportType) {
   return "bg-blue-100 text-blue-800";
 }
 
-function reportTypePath(type: DraftReportType) {
+function sourceReportTypePath(type: DraftReportType) {
   if (type === "machine_maintenance") {
-    return "machine_maintenance";
+    return "preventive";
+  }
+
+  return type === "service_report" ? "service-report" : type;
+}
+
+function aiGenerationRoutePath(type: DraftReportType) {
+  if (type === "machine_maintenance") {
+    return "machine-maintenance";
   }
 
   return type === "service_report" ? "service-report" : type;
@@ -53,7 +65,7 @@ function formatDate(value?: string) {
 }
 
 async function getSourceReport<T>(type: DraftReportType, id: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}/api/reports/${reportTypePath(type)}/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/api/reports/${sourceReportTypePath(type)}/${id}`, {
     headers: {
       "Content-Type": "application/json",
     },
@@ -142,13 +154,26 @@ export function AiGenerationPage() {
   }, [drafts, search, vesselFilter, reportTypeFilter]);
 
   async function handleGenerate(draft: DraftReportRow) {
-    if (draft.type === "machine_maintenance") {
-      return;
-    }
-
     try {
       setGeneratingId(draft.id);
       setError("");
+
+      if (draft.type === "machine_maintenance") {
+        const [sourceReport, aiReport] = await Promise.all([
+          getSourceReport<SourceMachineMaintenanceReport>("machine_maintenance", draft.id),
+          generateAiReport("machine_maintenance", draft.id) as Promise<AiMachineMaintenanceReport>,
+        ]);
+
+        navigate(`/ai-generation-service/${aiGenerationRoutePath(draft.type)}/${draft.id}`, {
+          state: {
+            reportType: "machine_maintenance",
+            sourceReport,
+            aiReport,
+          },
+        });
+
+        return;
+      }
 
       if (draft.type === "cfr") {
         const [sourceReport, aiReport] = await Promise.all([
@@ -323,7 +348,6 @@ export function AiGenerationPage() {
             <tbody>
               {filteredDrafts.length > 0 ? (
                 filteredDrafts.map((draft) => {
-                  const isMachineMaintenance = draft.type === "machine_maintenance";
                   const isGenerating = generatingId === draft.id;
 
                   return (
@@ -363,7 +387,7 @@ export function AiGenerationPage() {
                         <button
                           type="button"
                           onClick={() => handleGenerate(draft)}
-                          disabled={isMachineMaintenance || isGenerating}
+                          disabled={isGenerating}
                           className="inline-flex w-fit items-center justify-center gap-2 rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isGenerating ? (
@@ -371,9 +395,7 @@ export function AiGenerationPage() {
                           ) : (
                             <FaMagic />
                           )}
-                          {isMachineMaintenance
-                            ? "Coming soon"
-                            : isGenerating
+                          {isGenerating
                             ? "Generating..."
                             : "Generate AI"}
                         </button>

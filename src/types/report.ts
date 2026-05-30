@@ -60,6 +60,8 @@ export type MachineMaintenanceTaskDetail = {
   notes?: string;
   measuredValue?: string;
   unit?: string;
+  photoIds?: string[];
+  photos?: ReportPhotoDetail[];
   completedAt?: string;
 };
 
@@ -87,6 +89,7 @@ export type MachineMaintenanceReportDetail = {
   skippedCount?: number;
   reportCategory: "machine_maintenance";
   tasks: MachineMaintenanceTaskDetail[];
+  photos?: ReportPhotoDetail[];
 };
 
 export type ServiceReportDetail = {

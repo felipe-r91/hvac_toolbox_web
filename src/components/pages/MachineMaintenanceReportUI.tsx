@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import {
   FaCamera,
   FaCheckCircle,
@@ -13,6 +14,8 @@ import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { API_BASE_URL } from "../../api/config";
 import { uploadCustomerReportPdf } from "../../api/customerReportApi";
+
+type Tone = "green" | "red" | "amber" | "blue" | "slate";
 
 export type AiMachineMaintenanceReport = {
   reportNo?: string;
@@ -291,7 +294,7 @@ function SwappableImage({
   return <img src={src} alt={alt} className={className} />;
 }
 
-function StatusPill({ status }: { status?: string }) {
+function ActivityStatusPill({ status }: { status?: string }) {
   const normalized = status?.toLowerCase() || "";
   const classes =
     normalized === "fault" || normalized === "down" || normalized === "open"
@@ -309,55 +312,196 @@ function StatusPill({ status }: { status?: string }) {
   );
 }
 
+function StatusPill({
+  children,
+  tone = "slate",
+  isPrintPreview = false,
+  preservePrintStyle = false,
+}: {
+  children: React.ReactNode;
+  tone?: Tone;
+  isPrintPreview?: boolean;
+  preservePrintStyle?: boolean;
+}) {
+  const [selectedTone, setSelectedTone] = React.useState<Tone>(tone);
+  const [isOpen, setIsOpen] = React.useState(false);
+  const pillRef = React.useRef<HTMLSpanElement | null>(null);
+  const [menuPosition, setMenuPosition] = React.useState({ top: 0, left: 0 });
+
+  React.useEffect(() => {
+    setSelectedTone(tone);
+  }, [tone]);
+
+  function openMenu() {
+    if (isPrintPreview) return;
+
+    const rect = pillRef.current?.getBoundingClientRect();
+    if (rect) {
+      setMenuPosition({ top: rect.bottom + 6, left: rect.left });
+    }
+
+    setIsOpen((prev) => !prev);
+  }
+
+  const tones: Record<Tone, string> = {
+    green: "border-emerald-300 text-emerald-700 bg-emerald-50",
+    red: "border-red-300 text-red-700 bg-red-50",
+    amber: "border-amber-300 text-amber-800 bg-amber-50",
+    blue: "border-[#003594] text-[#003594] bg-[#EAF6FB]",
+    slate: "border-slate-300 text-slate-700 bg-slate-100",
+  };
+
+  const dotColors: Record<Tone, string> = {
+    green: "bg-emerald-500",
+    red: "bg-red-500",
+    amber: "bg-yellow-500",
+    blue: "bg-blue-500",
+    slate: "bg-slate-400",
+  };
+
+  const toneOptions: Tone[] = ["green", "amber", "red", "blue", "slate"];
+
+  return (
+    <>
+      <span
+        ref={pillRef}
+        onClick={openMenu}
+        className={`inline-flex items-center border px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${
+          isPrintPreview ? "cursor-default" : "cursor-pointer"
+        } ${tones[selectedTone]} ${
+          preservePrintStyle ? "" : "print:border-none print:bg-transparent"
+        }`}
+      >
+        <EditableText>{children}</EditableText>
+      </span>
+
+      {!isPrintPreview &&
+        isOpen &&
+        createPortal(
+          <div
+            className="fixed z-9999 w-40 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-slate-200 print:hidden"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+          >
+            {toneOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => {
+                  setSelectedTone(option);
+                  setIsOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+              >
+                <span className={`h-2.5 w-2.5 rounded-full ${dotColors[option]}`} />
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
+function getStatusTone(status?: string): Tone {
+  const value = (status || "").toLowerCase();
+
+  if (
+    value.includes("not returned") ||
+    value.includes("down") ||
+    value.includes("offline") ||
+    value.includes("non-operational") ||
+    value.includes("unavailable") ||
+    value.includes("no")
+  ) {
+    return "red";
+  }
+
+  if (
+    value.includes("restriction") ||
+    value.includes("restricted") ||
+    value.includes("limited") ||
+    value.includes("degraded") ||
+    value.includes("monitor") ||
+    value.includes("progress")
+  ) {
+    return "amber";
+  }
+
+  if (
+    value.includes("returned") ||
+    value.includes("online") ||
+    value.includes("operational") ||
+    value.includes("running") ||
+    value.includes("finished") ||
+    value.includes("yes") ||
+    value.includes("ok")
+  ) {
+    return "green";
+  }
+
+  return "slate";
+}
+
 function ReportHeader({
   report,
+  isPrintPreview,
   hasActiveAlarm,
 }: {
   report: NormalizedMaintenanceReport;
+  isPrintPreview: boolean;
   hasActiveAlarm: boolean;
 }) {
   return (
-    <header className="mb-3 border-b-4 border-[#003594] pb-3">
-      <div className="flex items-start justify-between gap-6">
+    <header className="avoid-break overflow-hidden rounded-md border border-slate-300 bg-white">
+      <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-end">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#003594]">
-            {report.company}
-          </p>
-          <h1 className="mt-2 text-2xl font-black uppercase tracking-wide text-slate-950">
+          <div className="mb-4 flex items-center gap-2">
+            <img
+              src="/jci-logo.png"
+              alt="Johnson Controls logo"
+              className="h-14 w-auto object-contain"
+            />
+            <div className="hidden h-10 w-px bg-slate-300 sm:block" />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#003594]">
+                <EditableText>{report.branch}</EditableText>
+              </p>
+            </div>
+          </div>
+
+          <h1 className="text-3xl font-black tracking-tight text-[#152EA9]">
             <EditableText>{report.title}</EditableText>
           </h1>
-          <p className="mt-1 text-sm font-semibold text-slate-600">
+          <p className="mt-1 text-base font-semibold text-slate-500">
             <EditableText>{report.subtitle}</EditableText>
           </p>
         </div>
+      </div>
 
-        <div className="min-w-[58mm] border border-slate-300 text-xs">
-          <div className="bg-[#003594] px-3 py-2 font-bold uppercase tracking-wide text-white">
-            Report Control
-          </div>
-          <div className="grid grid-cols-[28mm_1fr] border-t border-slate-300">
-            <div className="border-r border-slate-300 px-2 py-1 font-bold text-slate-500">
-              Report No.
-            </div>
-            <div className="px-2 py-1 font-semibold">
-              <EditableText>{report.reportNo}</EditableText>
-            </div>
-          </div>
-          <div className="grid grid-cols-[28mm_1fr] border-t border-slate-300">
-            <div className="border-r border-slate-300 px-2 py-1 font-bold text-slate-500">
-              Date
-            </div>
-            <div className="px-2 py-1 font-semibold">
-              <EditableText>{report.date}</EditableText>
-            </div>
-          </div>
-          <div className="grid grid-cols-[28mm_1fr] border-t border-slate-300">
-            <div className="border-r border-slate-300 px-2 py-1 font-bold text-slate-500">
-              Status
-            </div>
-            <div className="px-2 py-1 font-semibold">
-              {hasActiveAlarm ? "Action Required" : report.machineStatus}
-            </div>
+      <div className="h-3 bg-linear-to-r from-[#003594] via-[#00A9E0] to-[#78BE20]" />
+
+      <div className="border-t border-slate-300 bg-white px-4 py-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
+            <EditableText>Machine Maintenance Report Status</EditableText>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <StatusPill
+              tone={getStatusTone(report.machineStatus)}
+              isPrintPreview={isPrintPreview}
+              preservePrintStyle
+            >
+              {report.machineStatus}
+            </StatusPill>
+
+            <StatusPill
+              tone={hasActiveAlarm ? "amber" : "green"}
+              isPrintPreview={isPrintPreview}
+              preservePrintStyle
+            >
+              {hasActiveAlarm ? "alarm" : "no alarm"}
+            </StatusPill>
           </div>
         </div>
       </div>
@@ -373,12 +517,31 @@ function ReportFooter({
   totalPages: number;
 }) {
   return (
-    <footer className="mt-3 border-t border-slate-300 pt-2 text-[10px] text-slate-500">
-      <div className="flex items-center justify-between">
-        <span>Johnson Controls Marine & Navy</span>
-        <span>
+    <footer className="mt-auto bg-white pt-5">
+      <div className="h-0.5 bg-linear-to-r from-[#003594] via-[#00A9E0] to-[#78BE20]" />
+
+      <div className="px-5 py-2 text-[8px] leading-tight text-slate-500 md:flex md:items-center md:justify-between">
+        <div className="space-y-1">
+          <p>
+            <EditableText multiline>
+              This document is the property of Johnson Controls and is delivered upon the express condition that the content will not be disclosed to third party without Johnson Controls' written consent.
+            </EditableText>
+          </p>
+          <p className="font-semibold text-slate-600">
+            <EditableText>
+              Johnson Controls Building Solutions LLC, Marine & Navy - Global Marine Services, Miami
+            </EditableText>
+          </p>
+          <p className="font-semibold text-slate-600">
+            <EditableText>
+              10550 Commerce Pkwy, Miramar - Florida, 33025 - USA
+            </EditableText>
+          </p>
+        </div>
+
+        <p className="mt-2 shrink-0 text-right font-bold text-[#003594] md:mt-0">
           Page {pageNumber} of {totalPages}
-        </span>
+        </p>
       </div>
     </footer>
   );
@@ -492,7 +655,7 @@ function ActivityCard({
             <EditableText>{activity.task}</EditableText>
           </h3>
         </div>
-        <StatusPill status={activity.status} />
+        <ActivityStatusPill status={activity.status} />
       </div>
 
       <div className="grid gap-x-4 px-3 py-2 md:grid-cols-3">
@@ -762,7 +925,11 @@ export default function MachineMaintenanceReportUI({
   function renderFirstPage() {
     return (
       <>
-        <ReportHeader report={report} hasActiveAlarm={hasActiveAlarm} />
+        <ReportHeader
+          report={report}
+          isPrintPreview={isPrintPreview}
+          hasActiveAlarm={hasActiveAlarm}
+        />
         <div className="space-y-3">
           <Section icon={FaShip} title="Vessel / Customer Information">
             <div className="grid gap-x-4 md:grid-cols-2">
@@ -863,7 +1030,7 @@ export default function MachineMaintenanceReportUI({
                   <EditableText multiline className="block text-sm leading-5 text-slate-800">
                     {alarm.description}
                   </EditableText>
-                  <StatusPill status={alarm.status} />
+                  <ActivityStatusPill status={alarm.status} />
                 </li>
               ))}
             </ul>

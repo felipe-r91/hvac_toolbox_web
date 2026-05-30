@@ -11,7 +11,6 @@ import {
 } from "@dnd-kit/core";
 import {
   FaCamera,
-  FaCheckCircle,
   FaClipboardCheck,
   FaExclamationTriangle,
   FaFileAlt,
@@ -32,7 +31,6 @@ type SectionId =
   | "equipment"
   | "summary"
   | "alarms"
-  | "recommendations"
   | "photos"
   | "furtherAction"
   | "ehs"
@@ -199,7 +197,6 @@ type NormalizedMaintenanceReport = {
   executiveSummary: string;
   alarms: Required<MaintenanceAlarmItem>[];
   activities: Required<MaintenanceActivityItem>[];
-  recommendations: string[];
   furtherActionRequired: string;
   ehsStatement: string;
 };
@@ -250,7 +247,7 @@ function buildInitialPages(activityChunkCount: number, includePhotos: boolean): 
   return [
     { id: "page-1", sections: ["vessel", "service"] },
     { id: "page-2", sections: ["equipment", "summary"] },
-    { id: "page-3", sections: ["alarms", "recommendations"] },
+    { id: "page-3", sections: ["alarms"] },
     ...activityPages,
     ...(includePhotos ? [{ id: "page-photos", sections: ["photos"] as SectionId[] }] : []),
     { id: "page-final", sections: ["furtherAction", "ehs"] },
@@ -751,6 +748,10 @@ function ActivityCard({
   const unmatchedPhotoRefs = activity.photos.filter(
     (photo) => !matchPhotoReference(photo, sourceReport)
   );
+  const measuredValue = `${activity.measuredValue || ""} ${activity.unit || ""}`.trim();
+  const hasNotes = Boolean(activity.notes.trim());
+  const hasMeasuredValue = Boolean(measuredValue);
+  const shouldShowActivityDetails = hasNotes || hasMeasuredValue;
 
   return (
     <article className="avoid-break group border border-slate-300 bg-white">
@@ -777,117 +778,85 @@ function ActivityCard({
         </div>
       </div>
 
-      <div className="grid gap-x-4 px-3 py-2 md:grid-cols-3">
-        <InfoRow label="Tool" value={activity.tool} />
-        <InfoRow
-          label="Measured Value"
-          value={`${activity.measuredValue || ""} ${activity.unit || ""}`.trim()}
-        />
-        <InfoRow label="Completed At" value={formatDate(activity.completedAt)} />
-      </div>
+      {shouldShowActivityDetails ? (
+        <>
+          <div className="border-t border-slate-300 px-3 py-2">
+            {hasMeasuredValue ? (
+              <InfoRow label="Measured Value" value={measuredValue} />
+            ) : null}
 
-      {activity.notes.trim() ? (
-        <div className="border-t border-slate-300 px-3 py-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-            Notes
-          </p>
-          <EditableText multiline className="mt-1 block text-xs leading-5 text-slate-700">
-            {activity.notes}
-          </EditableText>
-        </div>
-      ) : null}
-
-      {(matchedPhotos.length > 0 || unmatchedPhotoRefs.length > 0) && (
-        <div className="border-t border-slate-300 px-3 py-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-            Photos
-          </p>
-          <div className="mt-2 grid gap-2 md:grid-cols-2">
-            {matchedPhotos.map((photo, photoIndex) => (
-              <figure
-                key={`${photo.id || photo.filename || photoIndex}-${photoIndex}`}
-                className="overflow-hidden border border-slate-300 bg-slate-50"
-              >
-                <div className="h-[34mm]">
-                  <SwappableImage
-                    src={resolvePhotoUrl(photo.previewUrl)}
-                    alt={photo.caption || photo.filename || `Activity photo ${photoIndex + 1}`}
-                    className="h-full w-full object-cover"
-                    emptyText="Photo unavailable"
-                  />
-                </div>
-                <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
-                  <EditableText multiline>
-                    {photo.caption || photo.filename || `Photo ${photoIndex + 1}`}
-                  </EditableText>
-                </figcaption>
-              </figure>
-            ))}
-
-            {unmatchedPhotoRefs.map((photo, photoIndex) =>
-              isImageReference(photo) ? (
-                <figure
-                  key={`${photo}-${photoIndex}`}
-                  className="overflow-hidden border border-slate-300 bg-slate-50"
-                >
-                  <div className="h-[34mm]">
-                    <SwappableImage
-                      src={resolvePhotoUrl(photo)}
-                      alt={`Activity photo ${photoIndex + 1}`}
-                      className="h-full w-full object-cover"
-                      emptyText="Photo unavailable"
-                    />
-                  </div>
-                  <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
-                    <EditableText>{photo}</EditableText>
-                  </figcaption>
-                </figure>
-              ) : (
-                <div
-                  key={`${photo}-${photoIndex}`}
-                  className="border border-slate-300 bg-slate-50 p-2 text-xs text-slate-700"
-                >
-                  <EditableText>{photo}</EditableText>
-                </div>
-              )
-            )}
+            {hasNotes ? (
+              <>
+                <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                  Notes
+                </p>
+                <EditableText multiline className="mt-1 block text-xs leading-5 text-slate-700">
+                  {activity.notes}
+                </EditableText>
+              </>
+            ) : null}
           </div>
-        </div>
-      )}
+
+          {(matchedPhotos.length > 0 || unmatchedPhotoRefs.length > 0) && (
+            <div className="border-t border-slate-300 px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                Photos
+              </p>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                {matchedPhotos.map((photo, photoIndex) => (
+                  <figure
+                    key={`${photo.id || photo.filename || photoIndex}-${photoIndex}`}
+                    className="overflow-hidden border border-slate-300 bg-slate-50"
+                  >
+                    <div className="h-[34mm]">
+                      <SwappableImage
+                        src={resolvePhotoUrl(photo.previewUrl)}
+                        alt={photo.caption || photo.filename || `Activity photo ${photoIndex + 1}`}
+                        className="h-full w-full object-cover"
+                        emptyText="Photo unavailable"
+                      />
+                    </div>
+                    <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
+                      <EditableText multiline>
+                        {photo.caption || photo.filename || `Photo ${photoIndex + 1}`}
+                      </EditableText>
+                    </figcaption>
+                  </figure>
+                ))}
+
+                {unmatchedPhotoRefs.map((photo, photoIndex) =>
+                  isImageReference(photo) ? (
+                    <figure
+                      key={`${photo}-${photoIndex}`}
+                      className="overflow-hidden border border-slate-300 bg-slate-50"
+                    >
+                      <div className="h-[34mm]">
+                        <SwappableImage
+                          src={resolvePhotoUrl(photo)}
+                          alt={`Activity photo ${photoIndex + 1}`}
+                          className="h-full w-full object-cover"
+                          emptyText="Photo unavailable"
+                        />
+                      </div>
+                      <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
+                        <EditableText>{photo}</EditableText>
+                      </figcaption>
+                    </figure>
+                  ) : (
+                    <div
+                      key={`${photo}-${photoIndex}`}
+                      className="border border-slate-300 bg-slate-50 p-2 text-xs text-slate-700"
+                    >
+                      <EditableText>{photo}</EditableText>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      ) : null}
     </article>
-  );
-}
-
-function RecommendationCard({
-  recommendation,
-  index,
-  onDelete,
-  isEditing,
-}: {
-  recommendation: string;
-  index: number;
-  onDelete: () => void;
-  isEditing: boolean;
-}) {
-  return (
-    <li className="avoid-break group flex gap-3 border-b border-t border-slate-300 bg-white p-2.5">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#003594] text-[11px] font-black text-white">
-        {index + 1}
-      </span>
-      <EditableText multiline className="block flex-1 text-sm leading-6 text-slate-800">
-        {recommendation}
-      </EditableText>
-
-      {isEditing && (
-        <button
-          type="button"
-          onClick={onDelete}
-          className="ml-auto hidden shrink-0 self-start border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 hover:bg-slate-100 group-hover:inline-flex print:hidden"
-        >
-          Delete
-        </button>
-      )}
-    </li>
   );
 }
 
@@ -996,7 +965,6 @@ export default function MachineMaintenanceReportUI({
         status: alarm.status || "",
       })) || [],
     activities: normalizeActivities(aiReport.activities, sourceReport.tasks),
-    recommendations: aiReport.recommendations || [],
     furtherActionRequired: aiReport.furtherActionRequired || "",
     ehsStatement:
       aiReport.ehsStatement ||
@@ -1007,9 +975,6 @@ export default function MachineMaintenanceReportUI({
   const isEditing = !isPrintPreview;
   const [alarms, setAlarms] = React.useState<Required<MaintenanceAlarmItem>[]>(
     report.alarms
-  );
-  const [recommendations, setRecommendations] = React.useState<string[]>(
-    report.recommendations
   );
   const [activities, setActivities] = React.useState<
     Required<MaintenanceActivityItem>[]
@@ -1029,7 +994,6 @@ export default function MachineMaintenanceReportUI({
 
   React.useEffect(() => {
     setAlarms(report.alarms);
-    setRecommendations(report.recommendations);
     setActivities(report.activities);
     setPages(
       buildInitialPages(
@@ -1347,47 +1311,6 @@ export default function MachineMaintenanceReportUI({
               </ul>
             ) : (
               <p className="text-sm text-slate-500">No alarms reported.</p>
-            )}
-          </Section>
-        );
-
-      case "recommendations":
-        return (
-          <Section
-            icon={FaCheckCircle}
-            title="Recommendations"
-            right={
-              isEditing ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setRecommendations((current) => [...current, "New recommendation"])
-                  }
-                  className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
-                >
-                  Add recommendation
-                </button>
-              ) : null
-            }
-          >
-            {recommendations.length > 0 ? (
-              <ol className="space-y-2">
-                {recommendations.map((item, index) => (
-                  <RecommendationCard
-                    key={`${item}-${index}`}
-                    recommendation={item}
-                    index={index}
-                    isEditing={isEditing}
-                    onDelete={() =>
-                      setRecommendations((current) =>
-                        current.filter((_, itemIndex) => itemIndex !== index)
-                      )
-                    }
-                  />
-                ))}
-              </ol>
-            ) : (
-              <p className="text-sm text-slate-500">No recommendations provided.</p>
             )}
           </Section>
         );

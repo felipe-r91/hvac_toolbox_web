@@ -357,15 +357,20 @@ function DraggableSection({
 function DroppablePageBody({
   pageId,
   children,
+  bodyRef,
 }: {
   pageId: string;
   children: React.ReactNode;
+  bodyRef?: (node: HTMLDivElement | null) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: pageId });
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node);
+        bodyRef?.(node);
+      }}
       className={`flex-1 space-y-3 overflow-hidden ${isOver ? "bg-[#EAF6FB]/40" : "bg-white"}`}
     >
       {children}
@@ -651,7 +656,7 @@ function ReportFooter({
 function SignatureBlock({ report }: { report: NormalizedMaintenanceReport }) {
   return (
     <div className="px-4 pb-20 pt-6">
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid max-w-[95mm] gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
             <EditableText>Service Engineer</EditableText>
@@ -660,27 +665,16 @@ function SignatureBlock({ report }: { report: NormalizedMaintenanceReport }) {
             <EditableText>{report.engineer || "-"}</EditableText>
           </div>
         </div>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-            <EditableText>Customer Representative</EditableText>
-          </p>
-          <div className="mt-8 border-t border-slate-400 pt-2 text-sm font-bold text-[#003594]">
-            <EditableText>Signature / Vessel Stamp</EditableText>
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
-function chunkItems<T>(items: T[], size: number) {
-  const chunks: T[][] = [];
-
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
-
-  return chunks.length > 0 ? chunks : [[]];
+function normalizeActivityChunks(
+  chunks: Required<MaintenanceActivityItem>[][]
+) {
+  const nextChunks = chunks.filter((chunk) => chunk.length > 0);
+  return nextChunks.length > 0 ? nextChunks : [[]];
 }
 
 function normalizeActivities(
@@ -702,17 +696,19 @@ function normalizeActivities(
           photos: task.photoIds || task.photos?.map((photo) => photo.id || photo.filename || ""),
         })) || [];
 
-  return activities.map((activity) => ({
-    category: activity.category || "-",
-    task: activity.task || "-",
-    tool: activity.tool || "",
-    status: activity.status || "",
-    notes: activity.notes || "",
-    measuredValue: activity.measuredValue || "",
-    unit: activity.unit || "",
-    completedAt: activity.completedAt || "",
-    photos: activity.photos || [],
-  }));
+  return activities
+    .map((activity) => ({
+      category: activity.category || "-",
+      task: activity.task || "-",
+      tool: activity.tool || "",
+      status: activity.status || "",
+      notes: activity.notes || "",
+      measuredValue: activity.measuredValue || "",
+      unit: activity.unit || "",
+      completedAt: activity.completedAt || "",
+      photos: activity.photos || [],
+    }))
+    .filter((activity) => activity.status.toLowerCase() !== "skipped");
 }
 
 function matchPhotoReference(
@@ -976,12 +972,12 @@ export default function MachineMaintenanceReportUI({
   const [alarms, setAlarms] = React.useState<Required<MaintenanceAlarmItem>[]>(
     report.alarms
   );
-  const [activities, setActivities] = React.useState<
-    Required<MaintenanceActivityItem>[]
-  >(report.activities);
+  const [activityChunks, setActivityChunks] = React.useState<
+    Required<MaintenanceActivityItem>[][]
+  >(() => [report.activities]);
   const [isUploadingReport, setIsUploadingReport] = React.useState(false);
   const reportRef = React.useRef<HTMLElement | null>(null);
-  const activityChunks = chunkItems(activities, 5);
+  const pageBodyRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const [pages, setPages] = React.useState<ReportPage[]>(() =>
     buildInitialPages(activityChunks.length, Boolean(sourceReport.photos?.length))
   );
@@ -994,14 +990,94 @@ export default function MachineMaintenanceReportUI({
 
   React.useEffect(() => {
     setAlarms(report.alarms);
-    setActivities(report.activities);
+    setActivityChunks([report.activities]);
     setPages(
       buildInitialPages(
-        chunkItems(report.activities, 5).length,
+        1,
         Boolean(sourceReport.photos?.length)
       )
     );
   }, [aiReport, sourceReport]);
+
+  React.useEffect(() => {
+    setPages((currentPages) => {
+      let nextPages = currentPages.map((page) => ({
+        ...page,
+        sections: page.sections.filter((section) => {
+          if (!section.startsWith("activities-")) return true;
+          const chunkIndex = Number(section.replace("activities-", ""));
+          return chunkIndex < activityChunks.length;
+        }),
+      }));
+
+      for (let index = 0; index < activityChunks.length; index += 1) {
+        const sectionId = `activities-${index}` as SectionId;
+        const hasSection = nextPages.some((page) =>
+          page.sections.includes(sectionId)
+        );
+
+        if (hasSection) continue;
+
+        const finalPageIndex = nextPages.findIndex((page) => page.id === "page-final");
+        const insertIndex = finalPageIndex === -1 ? nextPages.length : finalPageIndex;
+
+        nextPages = [
+          ...nextPages.slice(0, insertIndex),
+          { id: `page-activity-${index + 1}`, sections: [sectionId] },
+          ...nextPages.slice(insertIndex),
+        ];
+      }
+
+      while (
+        nextPages.length > 1 &&
+        nextPages[nextPages.length - 1].sections.length === 0
+      ) {
+        nextPages = nextPages.slice(0, -1);
+      }
+
+      return nextPages;
+    });
+  }, [activityChunks.length]);
+
+  React.useLayoutEffect(() => {
+    const timeout = window.setTimeout(() => {
+      for (const page of pages) {
+        const body = pageBodyRefs.current[page.id];
+        const isOverflowing = body && body.scrollHeight > body.clientHeight + 2;
+
+        if (!isOverflowing) continue;
+
+        const activitySection = [...page.sections]
+          .reverse()
+          .find((section) => section.startsWith("activities-"));
+
+        if (!activitySection) continue;
+
+        const chunkIndex = Number(activitySection.replace("activities-", ""));
+
+        setActivityChunks((currentChunks) => {
+          const sourceChunk = currentChunks[chunkIndex];
+          if (!sourceChunk || sourceChunk.length <= 1) return currentChunks;
+
+          const nextChunks = currentChunks.map((chunk) => [...chunk]);
+          const movedActivity = nextChunks[chunkIndex].pop();
+          if (!movedActivity) return currentChunks;
+
+          if (nextChunks[chunkIndex + 1]) {
+            nextChunks[chunkIndex + 1].unshift(movedActivity);
+          } else {
+            nextChunks[chunkIndex + 1] = [movedActivity];
+          }
+
+          return normalizeActivityChunks(nextChunks);
+        });
+
+        break;
+      }
+    }, 80);
+
+    return () => window.clearTimeout(timeout);
+  }, [activityChunks, pages, alarms, isPrintPreview]);
 
   function handleDragEnd(event: DragEndEvent) {
     if (!isEditing) return;
@@ -1116,6 +1192,10 @@ export default function MachineMaintenanceReportUI({
   }
 
   function renderActivityPage(activityChunk: Required<MaintenanceActivityItem>[], chunkIndex: number) {
+    const activityOffset = activityChunks
+      .slice(0, chunkIndex)
+      .reduce((total, chunk) => total + chunk.length, 0);
+
     return (
       <Section
         icon={FaTools}
@@ -1127,13 +1207,25 @@ export default function MachineMaintenanceReportUI({
               <ActivityCard
                 key={`${activity.category}-${activity.task}-${chunkIndex}-${index}`}
                 activity={activity}
-                index={chunkIndex * 5 + index}
+                index={activityOffset + index}
                 sourceReport={sourceReport}
                 isEditing={isEditing}
                 onDelete={() => {
-                  const realIndex = chunkIndex * 5 + index;
-                  setActivities((current) =>
-                    current.filter((_, itemIndex) => itemIndex !== realIndex)
+                  setActivityChunks((currentChunks) => {
+                    const flatActivities = currentChunks.flat();
+                    const realIndex =
+                      currentChunks
+                        .slice(0, chunkIndex)
+                        .reduce((total, chunk) => total + chunk.length, 0) +
+                      index;
+                    const nextActivities = flatActivities.filter(
+                      (_, itemIndex) => itemIndex !== realIndex
+                    );
+
+                    return [nextActivities];
+                  });
+                  setPages(
+                    buildInitialPages(1, Boolean(sourceReport.photos?.length))
                   );
                 }}
               />
@@ -1445,7 +1537,12 @@ export default function MachineMaintenanceReportUI({
               key={page.id}
               className={`${isPrintPreview ? "w-[210mm]" : "w-full"} report-page mx-auto flex h-[297mm] flex-col overflow-hidden bg-white p-[10mm] shadow-none print:mx-0 print:h-[297mm] print:w-[210mm] print:p-[10mm]`}
             >
-              <DroppablePageBody pageId={page.id}>
+              <DroppablePageBody
+                pageId={page.id}
+                bodyRef={(node) => {
+                  pageBodyRefs.current[page.id] = node;
+                }}
+              >
                 {pageIndex === 0 && (
                   <ReportHeader
                     report={report}

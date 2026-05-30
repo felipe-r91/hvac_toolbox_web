@@ -1,11 +1,21 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
   FaCamera,
   FaCheckCircle,
   FaClipboardCheck,
   FaExclamationTriangle,
   FaFileAlt,
+  FaGripVertical,
   FaShieldAlt,
   FaShip,
   FaTools,
@@ -16,6 +26,22 @@ import { API_BASE_URL } from "../../api/config";
 import { uploadCustomerReportPdf } from "../../api/customerReportApi";
 
 type Tone = "green" | "red" | "amber" | "blue" | "slate";
+type SectionId =
+  | "vessel"
+  | "service"
+  | "equipment"
+  | "summary"
+  | "alarms"
+  | "recommendations"
+  | "photos"
+  | "furtherAction"
+  | "ehs"
+  | `activities-${number}`;
+
+type ReportPage = {
+  id: string;
+  sections: SectionId[];
+};
 
 export type AiMachineMaintenanceReport = {
   reportNo?: string;
@@ -212,6 +238,25 @@ function isImageReference(value?: string) {
   );
 }
 
+function buildInitialPages(activityChunkCount: number, includePhotos: boolean): ReportPage[] {
+  const activityPages: ReportPage[] = Array.from(
+    { length: Math.max(activityChunkCount, 1) },
+    (_, index) => ({
+      id: `page-activity-${index + 1}`,
+      sections: [`activities-${index}`],
+    })
+  );
+
+  return [
+    { id: "page-1", sections: ["vessel", "service"] },
+    { id: "page-2", sections: ["equipment", "summary"] },
+    { id: "page-3", sections: ["alarms", "recommendations"] },
+    ...activityPages,
+    ...(includePhotos ? [{ id: "page-photos", sections: ["photos"] as SectionId[] }] : []),
+    { id: "page-final", sections: ["furtherAction", "ehs"] },
+  ];
+}
+
 function EditableText({
   children,
   className = "",
@@ -271,6 +316,63 @@ function Section({
       </div>
       <div className="p-4">{children}</div>
     </section>
+  );
+}
+
+function DraggableSection({
+  id,
+  children,
+  isEditing,
+}: {
+  id: SectionId;
+  children: React.ReactNode;
+  isEditing: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${isDragging ? "opacity-60" : "opacity-100"} relative`}
+      style={{
+        transform: transform
+          ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+          : undefined,
+        zIndex: isDragging ? 50 : undefined,
+      }}
+    >
+      {isEditing && (
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          className="absolute right-2 top-2 z-10 hidden items-center gap-1 border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 hover:bg-slate-100 print:hidden md:inline-flex"
+        >
+          <FaGripVertical className="h-3 w-3" /> Move
+        </button>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function DroppablePageBody({
+  pageId,
+  children,
+}: {
+  pageId: string;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: pageId });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex-1 space-y-3 overflow-hidden ${isOver ? "bg-[#EAF6FB]/40" : "bg-white"}`}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -784,16 +886,9 @@ function AlarmCard({
   return (
     <li className="avoid-break group flex gap-3 bg-amber-50 p-2.5 text-sm text-amber-950 ring-1 ring-amber-100">
       <FaExclamationTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-      <div className="flex flex-1 flex-col gap-2">
-        <EditableText multiline className="block leading-6">
-          {alarm.description}
-        </EditableText>
-        {alarm.status ? (
-          <div>
-            <ActivityStatusPill status={alarm.status} />
-          </div>
-        ) : null}
-      </div>
+      <EditableText multiline className="block flex-1 leading-6">
+        {alarm.description}
+      </EditableText>
 
       {isEditing && (
         <button
@@ -902,7 +997,12 @@ export default function MachineMaintenanceReportUI({
   const [isUploadingReport, setIsUploadingReport] = React.useState(false);
   const reportRef = React.useRef<HTMLElement | null>(null);
   const activityChunks = chunkItems(report.activities, 5);
-  const totalPages = 4 + activityChunks.length + (sourceReport.photos?.length ? 1 : 0);
+  const [pages, setPages] = React.useState<ReportPage[]>(() =>
+    buildInitialPages(activityChunks.length, Boolean(sourceReport.photos?.length))
+  );
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
   const hasActiveAlarm = alarms.some(
     (alarm) => alarm.status.toLowerCase() !== "solved"
   );
@@ -910,7 +1010,28 @@ export default function MachineMaintenanceReportUI({
   React.useEffect(() => {
     setAlarms(report.alarms);
     setRecommendations(report.recommendations);
+    setPages(buildInitialPages(activityChunks.length, Boolean(sourceReport.photos?.length)));
   }, [aiReport, sourceReport]);
+
+  function handleDragEnd(event: DragEndEvent) {
+    if (!isEditing) return;
+
+    const activeSectionId = event.active.id as SectionId;
+    const targetPageId = event.over?.id as string | undefined;
+
+    if (!targetPageId || !targetPageId.startsWith("page-")) return;
+
+    setPages((currentPages) => {
+      const nextPages = currentPages.map((page) => ({
+        ...page,
+        sections: page.sections.filter((section) => section !== activeSectionId),
+      }));
+      const targetPage = nextPages.find((page) => page.id === targetPageId);
+      if (!targetPage) return currentPages;
+      targetPage.sections.push(activeSectionId);
+      return nextPages;
+    });
+  }
 
   function waitForRender() {
     return new Promise<void>((resolve) => {
@@ -1004,179 +1125,6 @@ export default function MachineMaintenanceReportUI({
     }
   }
 
-  function renderFirstPage() {
-    return (
-      <>
-        <ReportHeader
-          report={report}
-          isPrintPreview={isPrintPreview}
-          hasActiveAlarm={hasActiveAlarm}
-        />
-        <div className="space-y-3">
-          <Section icon={FaShip} title="Vessel / Customer Information">
-            <div className="grid gap-x-4 md:grid-cols-2">
-              <InfoRow label="Vessel Name" value={report.vessel.name} />
-              <InfoRow label="IMO No." value={report.vessel.imo} />
-              <InfoRow label="Vessel Type" value={report.vessel.type} />
-              <InfoRow label="Owner / Customer" value={report.vessel.owner} />
-              <InfoRow label="Requested By" value={report.vessel.requestedBy} />
-              <InfoRow label="Vessel Contact" value={report.vessel.contact} />
-            </div>
-          </Section>
-
-          <Section icon={FaClipboardCheck} title="Maintenance Information">
-            <div className="grid gap-x-4 md:grid-cols-2">
-              <InfoRow label="Service Order No." value={report.serviceOrder} />
-              <InfoRow label="Project Manager" value={report.projectManager} />
-              <InfoRow label="Date" value={report.date} />
-              <InfoRow label="Location" value={report.location} />
-              <InfoRow label="Service Engineer" value={report.engineer} />
-              <InfoRow label="Report Type" value="Machine Maintenance" />
-              <InfoRow label="Machine Status" value={report.machineStatus} />
-              <InfoRow label="Alarm Status" value={report.alarmStatus} />
-            </div>
-          </Section>
-        </div>
-      </>
-    );
-  }
-
-  function renderEquipmentPage() {
-    return (
-      <div className="space-y-3">
-        <Section icon={FaTools} title="Equipment Information">
-          <div className="grid gap-2 md:grid-cols-4">
-            <div className="flex max-h-[52mm] flex-col border border-slate-300 bg-white md:col-span-1">
-              <div className="flex flex-1 items-center justify-center overflow-hidden">
-                <SwappableImage
-                  src={resolvePhotoUrl(sourceReport.machinePhotoPreviewUrl)}
-                  alt={report.equipment.unit}
-                  className="h-full w-full object-contain"
-                  emptyText="No machine photo available"
-                />
-              </div>
-
-              <div className="border-t border-slate-300 px-2 py-1.5">
-                <p className="text-[9px] uppercase text-slate-500">Unit</p>
-                <p className="text-[11px] font-semibold text-[#003594]">
-                  {report.equipment.unit}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-x-4 border border-slate-300 p-2 md:col-span-3 md:grid-cols-3">
-              <InfoRow label="Model" value={report.equipment.model} />
-              <InfoRow label="Serial No." value={report.equipment.serial} />
-              <InfoRow label="Refrigerant" value={report.equipment.refrigerant} />
-              <InfoRow label="Oil Type" value={report.equipment.oil} />
-              <InfoRow label="Control System" value={report.equipment.controlSystem} />
-              <InfoRow label="Software Version" value={report.equipment.software} />
-              <InfoRow label="Starter Type" value={report.equipment.starterType} />
-              <InfoRow label="Compressor Type" value={report.equipment.compressorType} />
-              <InfoRow label="Machine Type" value={report.equipment.systemType} />
-              <InfoRow label="Mfg" value={report.equipment.manufacturer} />
-            </div>
-          </div>
-        </Section>
-
-        <Section icon={FaFileAlt} title="Summary">
-          <div className="border-l-4 border-[#003594] bg-[#EAF6FB] p-4">
-            <EditableText multiline className="block text-sm leading-6 text-slate-800">
-              {report.executiveSummary}
-            </EditableText>
-          </div>
-        </Section>
-      </div>
-    );
-  }
-
-  function renderAlarmPage() {
-    return (
-      <div className="space-y-3">
-        <Section
-          icon={FaExclamationTriangle}
-          title="Alarms / Abnormal Findings"
-          right={
-            isEditing ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setAlarms((current) => [
-                    ...current,
-                    {
-                      description: "New alarm / abnormal finding",
-                      status: "Open",
-                    },
-                  ])
-                }
-                className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
-              >
-                Add alarm
-              </button>
-            ) : null
-          }
-        >
-          {alarms.length > 0 ? (
-            <ul className="space-y-2">
-              {alarms.map((alarm, index) => (
-                <AlarmCard
-                  key={`${alarm.description}-${index}`}
-                  alarm={alarm}
-                  isEditing={isEditing}
-                  onDelete={() =>
-                    setAlarms((current) =>
-                      current.filter((_, itemIndex) => itemIndex !== index)
-                    )
-                  }
-                />
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-slate-500">No alarms reported.</p>
-          )}
-        </Section>
-
-        <Section
-          icon={FaCheckCircle}
-          title="Recommendations"
-          right={
-            isEditing ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setRecommendations((current) => [...current, "New recommendation"])
-                }
-                className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
-              >
-                Add recommendation
-              </button>
-            ) : null
-          }
-        >
-          {recommendations.length > 0 ? (
-            <ol className="space-y-2">
-              {recommendations.map((item, index) => (
-                <RecommendationCard
-                  key={`${item}-${index}`}
-                  recommendation={item}
-                  index={index}
-                  isEditing={isEditing}
-                  onDelete={() =>
-                    setRecommendations((current) =>
-                      current.filter((_, itemIndex) => itemIndex !== index)
-                    )
-                  }
-                />
-              ))}
-            </ol>
-          ) : (
-            <p className="text-sm text-slate-500">No recommendations provided.</p>
-          )}
-        </Section>
-      </div>
-    );
-  }
-
   function renderActivityPage(activityChunk: Required<MaintenanceActivityItem>[], chunkIndex: number) {
     return (
       <Section
@@ -1238,34 +1186,204 @@ export default function MachineMaintenanceReportUI({
     );
   }
 
-  function renderFinalPage() {
-    return (
-      <div className="space-y-3">
-        <Section icon={FaClipboardCheck} title="Further Action Required">
-          <EditableText multiline className="block text-sm leading-6 text-slate-800">
-            {report.furtherActionRequired}
-          </EditableText>
-        </Section>
+  function renderSection(sectionId: SectionId) {
+    if (sectionId.startsWith("activities-")) {
+      const chunkIndex = Number(sectionId.replace("activities-", ""));
+      return renderActivityPage(activityChunks[chunkIndex] || [], chunkIndex);
+    }
 
-        <Section icon={FaShieldAlt} title="Environment, Health & Safety">
-          <EditableText multiline className="block text-sm leading-6 text-slate-800">
-            {report.ehsStatement}
-          </EditableText>
-        </Section>
+    switch (sectionId) {
+      case "vessel":
+        return (
+          <Section icon={FaShip} title="Vessel / Customer Information">
+            <div className="grid gap-x-4 md:grid-cols-2">
+              <InfoRow label="Vessel Name" value={report.vessel.name} />
+              <InfoRow label="IMO No." value={report.vessel.imo} />
+              <InfoRow label="Vessel Type" value={report.vessel.type} />
+              <InfoRow label="Owner / Customer" value={report.vessel.owner} />
+              <InfoRow label="Requested By" value={report.vessel.requestedBy} />
+              <InfoRow label="Vessel Contact" value={report.vessel.contact} />
+            </div>
+          </Section>
+        );
 
-        <SignatureBlock report={report} />
-      </div>
-    );
+      case "service":
+        return (
+          <Section icon={FaClipboardCheck} title="Maintenance Information">
+            <div className="grid gap-x-4 md:grid-cols-2">
+              <InfoRow label="Service Order No." value={report.serviceOrder} />
+              <InfoRow label="Project Manager" value={report.projectManager} />
+              <InfoRow label="Date" value={report.date} />
+              <InfoRow label="Location" value={report.location} />
+              <InfoRow label="Service Engineer" value={report.engineer} />
+              <InfoRow label="Report Type" value="Machine Maintenance" />
+              <InfoRow label="Machine Status" value={report.machineStatus} />
+              <InfoRow label="Alarm Status" value={report.alarmStatus} />
+            </div>
+          </Section>
+        );
+
+      case "equipment":
+        return (
+          <Section icon={FaTools} title="Equipment Information">
+            <div className="grid gap-2 md:grid-cols-4">
+              <div className="flex max-h-[52mm] flex-col border border-slate-300 bg-white md:col-span-1">
+                <div className="flex flex-1 items-center justify-center overflow-hidden">
+                  <SwappableImage
+                    src={resolvePhotoUrl(sourceReport.machinePhotoPreviewUrl)}
+                    alt={report.equipment.unit}
+                    className="h-full w-full object-contain"
+                    emptyText="No machine photo available"
+                  />
+                </div>
+
+                <div className="border-t border-slate-300 px-2 py-1.5">
+                  <p className="text-[9px] uppercase text-slate-500">Unit</p>
+                  <p className="text-[11px] font-semibold text-[#003594]">
+                    {report.equipment.unit}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-x-4 border border-slate-300 p-2 md:col-span-3 md:grid-cols-3">
+                <InfoRow label="Model" value={report.equipment.model} />
+                <InfoRow label="Serial No." value={report.equipment.serial} />
+                <InfoRow label="Refrigerant" value={report.equipment.refrigerant} />
+                <InfoRow label="Oil Type" value={report.equipment.oil} />
+                <InfoRow label="Control System" value={report.equipment.controlSystem} />
+                <InfoRow label="Software Version" value={report.equipment.software} />
+                <InfoRow label="Starter Type" value={report.equipment.starterType} />
+                <InfoRow label="Compressor Type" value={report.equipment.compressorType} />
+                <InfoRow label="Machine Type" value={report.equipment.systemType} />
+                <InfoRow label="Mfg" value={report.equipment.manufacturer} />
+              </div>
+            </div>
+          </Section>
+        );
+
+      case "summary":
+        return (
+          <Section icon={FaFileAlt} title="Summary">
+            <div className="border-l-4 border-[#003594] bg-[#EAF6FB] p-4">
+              <EditableText multiline className="block text-sm leading-6 text-slate-800">
+                {report.executiveSummary}
+              </EditableText>
+            </div>
+          </Section>
+        );
+
+      case "alarms":
+        return (
+          <Section
+            icon={FaExclamationTriangle}
+            title="Alarms / Abnormal Findings"
+            right={
+              isEditing ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAlarms((current) => [
+                      ...current,
+                      {
+                        description: "New alarm / abnormal finding",
+                        status: "Open",
+                      },
+                    ])
+                  }
+                  className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
+                >
+                  Add alarm
+                </button>
+              ) : null
+            }
+          >
+            {alarms.length > 0 ? (
+              <ul className="space-y-2">
+                {alarms.map((alarm, index) => (
+                  <AlarmCard
+                    key={`${alarm.description}-${index}`}
+                    alarm={alarm}
+                    isEditing={isEditing}
+                    onDelete={() =>
+                      setAlarms((current) =>
+                        current.filter((_, itemIndex) => itemIndex !== index)
+                      )
+                    }
+                  />
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-500">No alarms reported.</p>
+            )}
+          </Section>
+        );
+
+      case "recommendations":
+        return (
+          <Section
+            icon={FaCheckCircle}
+            title="Recommendations"
+            right={
+              isEditing ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRecommendations((current) => [...current, "New recommendation"])
+                  }
+                  className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
+                >
+                  Add recommendation
+                </button>
+              ) : null
+            }
+          >
+            {recommendations.length > 0 ? (
+              <ol className="space-y-2">
+                {recommendations.map((item, index) => (
+                  <RecommendationCard
+                    key={`${item}-${index}`}
+                    recommendation={item}
+                    index={index}
+                    isEditing={isEditing}
+                    onDelete={() =>
+                      setRecommendations((current) =>
+                        current.filter((_, itemIndex) => itemIndex !== index)
+                      )
+                    }
+                  />
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-slate-500">No recommendations provided.</p>
+            )}
+          </Section>
+        );
+
+      case "photos":
+        return renderPhotosPage();
+
+      case "furtherAction":
+        return (
+          <Section icon={FaClipboardCheck} title="Further Action Required">
+            <EditableText multiline className="block text-sm leading-6 text-slate-800">
+              {report.furtherActionRequired}
+            </EditableText>
+          </Section>
+        );
+
+      case "ehs":
+        return (
+          <Section icon={FaShieldAlt} title="Environment, Health & Safety">
+            <EditableText multiline className="block text-sm leading-6 text-slate-800">
+              {report.ehsStatement}
+            </EditableText>
+          </Section>
+        );
+
+      default:
+        return null;
+    }
   }
-
-  const pages = [
-    renderFirstPage(),
-    renderEquipmentPage(),
-    renderAlarmPage(),
-    ...activityChunks.map((chunk, index) => renderActivityPage(chunk, index)),
-    ...(sourceReport.photos?.length ? [renderPhotosPage()] : []),
-    renderFinalPage(),
-  ];
 
   return (
     <div
@@ -1360,21 +1478,52 @@ export default function MachineMaintenanceReportUI({
         </div>
       </div>
 
-      <main
-        ref={reportRef}
-        id="machine-maintenance-report-print-area"
-        className={`${isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"} report-print-area mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
-      >
-        {pages.map((page, pageIndex) => (
-          <section
-            key={pageIndex}
-            className={`${isPrintPreview ? "w-[210mm]" : "w-full"} report-page mx-auto flex h-[297mm] flex-col overflow-hidden bg-white p-[10mm] shadow-none print:mx-0 print:h-[297mm] print:w-[210mm] print:p-[10mm]`}
-          >
-            <div className="flex-1 space-y-3 overflow-hidden bg-white">{page}</div>
-            <ReportFooter pageNumber={pageIndex + 1} totalPages={totalPages} />
-          </section>
-        ))}
-      </main>
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <main
+          ref={reportRef}
+          id="machine-maintenance-report-print-area"
+          className={`${isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"} report-print-area mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
+        >
+          {pages.map((page, pageIndex) => (
+            <section
+              key={page.id}
+              className={`${isPrintPreview ? "w-[210mm]" : "w-full"} report-page mx-auto flex h-[297mm] flex-col overflow-hidden bg-white p-[10mm] shadow-none print:mx-0 print:h-[297mm] print:w-[210mm] print:p-[10mm]`}
+            >
+              <DroppablePageBody pageId={page.id}>
+                {pageIndex === 0 && (
+                  <ReportHeader
+                    report={report}
+                    isPrintPreview={isPrintPreview}
+                    hasActiveAlarm={hasActiveAlarm}
+                  />
+                )}
+
+                {page.sections.map((sectionId) => {
+                  const isFixedSection = sectionId === "vessel" || sectionId === "service";
+
+                  if (isFixedSection) {
+                    return <div key={sectionId}>{renderSection(sectionId)}</div>;
+                  }
+
+                  return (
+                    <DraggableSection
+                      key={sectionId}
+                      id={sectionId}
+                      isEditing={isEditing}
+                    >
+                      {renderSection(sectionId)}
+                    </DraggableSection>
+                  );
+                })}
+              </DroppablePageBody>
+
+              {pageIndex === pages.length - 1 && <SignatureBlock report={report} />}
+
+              <ReportFooter pageNumber={pageIndex + 1} totalPages={pages.length} />
+            </section>
+          ))}
+        </main>
+      </DndContext>
     </div>
   );
 }

@@ -171,7 +171,6 @@ type NormalizedMaintenanceReport = {
     manufacturer: string;
   };
   executiveSummary: string;
-  maintenanceSummary: string;
   alarms: Required<MaintenanceAlarmItem>[];
   activities: Required<MaintenanceActivityItem>[];
   recommendations: string[];
@@ -252,10 +251,12 @@ function Section({
   icon: Icon,
   title,
   children,
+  right,
 }: {
   icon: React.ElementType;
   title: string;
   children: React.ReactNode;
+  right?: React.ReactNode;
 }) {
   return (
     <section className="border-t border-slate-300 bg-white">
@@ -266,6 +267,7 @@ function Section({
             {title}
           </h2>
         </div>
+        {right}
       </div>
       <div className="p-4">{children}</div>
     </section>
@@ -737,6 +739,75 @@ function ActivityCard({
   );
 }
 
+function RecommendationCard({
+  recommendation,
+  index,
+  onDelete,
+  isEditing,
+}: {
+  recommendation: string;
+  index: number;
+  onDelete: () => void;
+  isEditing: boolean;
+}) {
+  return (
+    <li className="avoid-break group flex gap-3 border-b border-t border-slate-300 bg-white p-2.5">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#003594] text-[11px] font-black text-white">
+        {index + 1}
+      </span>
+      <EditableText multiline className="block flex-1 text-sm leading-6 text-slate-800">
+        {recommendation}
+      </EditableText>
+
+      {isEditing && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="ml-auto hidden shrink-0 self-start border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 hover:bg-slate-100 group-hover:inline-flex print:hidden"
+        >
+          Delete
+        </button>
+      )}
+    </li>
+  );
+}
+
+function AlarmCard({
+  alarm,
+  onDelete,
+  isEditing,
+}: {
+  alarm: Required<MaintenanceAlarmItem>;
+  onDelete: () => void;
+  isEditing: boolean;
+}) {
+  return (
+    <li className="avoid-break group flex gap-3 bg-amber-50 p-2.5 text-sm text-amber-950 ring-1 ring-amber-100">
+      <FaExclamationTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+      <div className="flex flex-1 flex-col gap-2">
+        <EditableText multiline className="block leading-6">
+          {alarm.description}
+        </EditableText>
+        {alarm.status ? (
+          <div>
+            <ActivityStatusPill status={alarm.status} />
+          </div>
+        ) : null}
+      </div>
+
+      {isEditing && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="ml-auto hidden shrink-0 self-start border border-amber-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800 hover:bg-amber-100 group-hover:inline-flex print:hidden"
+        >
+          Delete
+        </button>
+      )}
+    </li>
+  );
+}
+
 export default function MachineMaintenanceReportUI({
   aiReport,
   sourceReport,
@@ -807,7 +878,6 @@ export default function MachineMaintenanceReportUI({
     },
 
     executiveSummary: aiReport.executiveSummary || "",
-    maintenanceSummary: aiReport.maintenanceSummary || "",
     alarms:
       aiReport.alarms?.map((alarm) => ({
         description: alarm.description || "Alarm / abnormal finding",
@@ -822,13 +892,25 @@ export default function MachineMaintenanceReportUI({
   };
 
   const [isPrintPreview, setIsPrintPreview] = React.useState(false);
+  const isEditing = !isPrintPreview;
+  const [alarms, setAlarms] = React.useState<Required<MaintenanceAlarmItem>[]>(
+    report.alarms
+  );
+  const [recommendations, setRecommendations] = React.useState<string[]>(
+    report.recommendations
+  );
   const [isUploadingReport, setIsUploadingReport] = React.useState(false);
   const reportRef = React.useRef<HTMLElement | null>(null);
   const activityChunks = chunkItems(report.activities, 5);
   const totalPages = 4 + activityChunks.length + (sourceReport.photos?.length ? 1 : 0);
-  const hasActiveAlarm = report.alarms.some(
+  const hasActiveAlarm = alarms.some(
     (alarm) => alarm.status.toLowerCase() !== "solved"
   );
+
+  React.useEffect(() => {
+    setAlarms(report.alarms);
+    setRecommendations(report.recommendations);
+  }, [aiReport, sourceReport]);
 
   function waitForRender() {
     return new Promise<void>((resolve) => {
@@ -952,8 +1034,6 @@ export default function MachineMaintenanceReportUI({
               <InfoRow label="Report Type" value="Machine Maintenance" />
               <InfoRow label="Machine Status" value={report.machineStatus} />
               <InfoRow label="Alarm Status" value={report.alarmStatus} />
-              <InfoRow label="Fault Count" value={String(sourceReport.faultCount ?? 0)} />
-              <InfoRow label="Skipped Count" value={String(sourceReport.skippedCount ?? 0)} />
             </div>
           </Section>
         </div>
@@ -999,18 +1079,12 @@ export default function MachineMaintenanceReportUI({
           </div>
         </Section>
 
-        <Section icon={FaFileAlt} title="Executive Summary">
+        <Section icon={FaFileAlt} title="Summary">
           <div className="border-l-4 border-[#003594] bg-[#EAF6FB] p-4">
             <EditableText multiline className="block text-sm leading-6 text-slate-800">
               {report.executiveSummary}
             </EditableText>
           </div>
-        </Section>
-
-        <Section icon={FaClipboardCheck} title="Maintenance Summary">
-          <EditableText multiline className="block text-sm leading-6 text-slate-800">
-            {report.maintenanceSummary}
-          </EditableText>
         </Section>
       </div>
     );
@@ -1019,19 +1093,42 @@ export default function MachineMaintenanceReportUI({
   function renderAlarmPage() {
     return (
       <div className="space-y-3">
-        <Section icon={FaExclamationTriangle} title="Alarms / Abnormal Findings">
-          {report.alarms.length > 0 ? (
+        <Section
+          icon={FaExclamationTriangle}
+          title="Alarms / Abnormal Findings"
+          right={
+            isEditing ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setAlarms((current) => [
+                    ...current,
+                    {
+                      description: "New alarm / abnormal finding",
+                      status: "Open",
+                    },
+                  ])
+                }
+                className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
+              >
+                Add alarm
+              </button>
+            ) : null
+          }
+        >
+          {alarms.length > 0 ? (
             <ul className="space-y-2">
-              {report.alarms.map((alarm, index) => (
-                <li
+              {alarms.map((alarm, index) => (
+                <AlarmCard
                   key={`${alarm.description}-${index}`}
-                  className="avoid-break flex items-start justify-between gap-3 border border-slate-300 bg-white p-3"
-                >
-                  <EditableText multiline className="block text-sm leading-5 text-slate-800">
-                    {alarm.description}
-                  </EditableText>
-                  <ActivityStatusPill status={alarm.status} />
-                </li>
+                  alarm={alarm}
+                  isEditing={isEditing}
+                  onDelete={() =>
+                    setAlarms((current) =>
+                      current.filter((_, itemIndex) => itemIndex !== index)
+                    )
+                  }
+                />
               ))}
             </ul>
           ) : (
@@ -1039,21 +1136,37 @@ export default function MachineMaintenanceReportUI({
           )}
         </Section>
 
-        <Section icon={FaCheckCircle} title="Recommendations">
-          {report.recommendations.length > 0 ? (
+        <Section
+          icon={FaCheckCircle}
+          title="Recommendations"
+          right={
+            isEditing ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setRecommendations((current) => [...current, "New recommendation"])
+                }
+                className="mr-24 border border-[#003594] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#003594] hover:bg-[#EAF6FB] print:hidden"
+              >
+                Add recommendation
+              </button>
+            ) : null
+          }
+        >
+          {recommendations.length > 0 ? (
             <ol className="space-y-2">
-              {report.recommendations.map((item, index) => (
-                <li
+              {recommendations.map((item, index) => (
+                <RecommendationCard
                   key={`${item}-${index}`}
-                  className="avoid-break flex gap-3 border border-slate-300 bg-white p-3"
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#003594] text-xs font-bold text-white">
-                    {index + 1}
-                  </span>
-                  <EditableText multiline className="block text-sm leading-5 text-slate-800">
-                    {item}
-                  </EditableText>
-                </li>
+                  recommendation={item}
+                  index={index}
+                  isEditing={isEditing}
+                  onDelete={() =>
+                    setRecommendations((current) =>
+                      current.filter((_, itemIndex) => itemIndex !== index)
+                    )
+                  }
+                />
               ))}
             </ol>
           ) : (

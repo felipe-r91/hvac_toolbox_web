@@ -196,6 +196,51 @@ function getReportLink(item: MachineTimelineItem) {
   return `/cfr-reports/${item.id}`;
 }
 
+function buildTimelineItemSearchText(item: MachineTimelineItem) {
+  return [
+    item.id,
+    item.type,
+    item.reportCategory,
+    reportTypeLabel(item.reportCategory),
+    item.date,
+    new Date(item.date).toLocaleString(),
+    item.status,
+    item.title,
+    item.summary,
+    item.failureComponent,
+    item.failureMode,
+    item.failureCode,
+    buildRecurringFailureLabel(item),
+    item.linkedServiceReportDraftId,
+    item.sourceMachineMaintenanceReportId,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function buildDisplayTimelineSearchText(entry: DisplayTimelineItem) {
+  if (entry.kind === "linked") {
+    return [
+      "linked machine maintenance service report",
+      buildTimelineItemSearchText(entry.machineMaintenanceReport),
+      buildTimelineItemSearchText(entry.serviceReport),
+    ].join(" ");
+  }
+
+  return buildTimelineItemSearchText(entry.item);
+}
+
+function matchesTimelineSearch(entry: DisplayTimelineItem, searchTerm: string) {
+  if (!searchTerm) return true;
+
+  const searchableText = buildDisplayTimelineSearchText(entry);
+  return searchTerm
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((term) => searchableText.includes(term));
+}
+
 export function MachineDetailPage() {
   const { machineId } = useParams();
   const navigate = useNavigate();
@@ -208,6 +253,7 @@ export function MachineDetailPage() {
   const [typeFilter, setTypeFilter] = useState<"all" | OfficeReportCategory>("all");
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const [failureFilter, setFailureFilter] = useState<string | null>(null);
+  const [timelineSearch, setTimelineSearch] = useState("");
 
   const typeMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -266,7 +312,14 @@ export function MachineDetailPage() {
       );
     }
 
-    const builtTimeline = buildDisplayTimeline(filteredTimeline);
+    const searchTerm = timelineSearch.trim().toLowerCase();
+    let builtTimeline = buildDisplayTimeline(filteredTimeline);
+
+    if (searchTerm) {
+      builtTimeline = builtTimeline.filter((entry) =>
+        matchesTimelineSearch(entry, searchTerm)
+      );
+    }
 
     return [...builtTimeline].sort((a, b) => {
       const dateA = new Date(a.date).getTime();
@@ -274,7 +327,7 @@ export function MachineDetailPage() {
 
       return dateSortDirection === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [timeline, typeFilter, failureFilter, dateSortDirection]);
+  }, [timeline, typeFilter, failureFilter, timelineSearch, dateSortDirection]);
 
   const recurringFailures = useMemo(() => {
     const failureMap = new Map<string, { label: string; count: number }>();
@@ -369,12 +422,6 @@ export function MachineDetailPage() {
                     : "—"}
                 </div>
 
-                <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
-                  MMR: {machine.machineMaintenanceReportCount} · SR:{" "}
-                  {machine.serviceReportDraftCount ?? 0} · HC:{" "}
-                  {machine.healthCheckReportCount ?? 0} · CFR: {machine.cfrDraftCount}
-                  {machine.dailyDraftCount !== undefined ? ` · Daily: ${machine.dailyDraftCount}` : ""}
-                </div>
               </div>
             </div>
           </div>
@@ -428,9 +475,21 @@ export function MachineDetailPage() {
       <section className="min-h-0 flex-1 overflow-hidden p-4">
         <div className="grid h-full grid-cols-1 gap-6">
           <section className="flex min-h-0 flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <h2 className="shrink-0 text-lg font-semibold text-slate-900">
-              Reports timeline
-            </h2>
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Reports timeline
+              </h2>
+
+              <label className="relative w-full sm:max-w-sm">
+                <span className="sr-only">Search reports timeline</span>
+                <input
+                  value={timelineSearch}
+                  onChange={(event) => setTimelineSearch(event.target.value)}
+                  placeholder="Search reports..."
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                />
+              </label>
+            </div>
 
             <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-2xl ring-1 ring-slate-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <table className="min-w-full border-collapse">
@@ -650,15 +709,23 @@ export function MachineDetailPage() {
                         colSpan={5}
                         className="px-4 py-10 text-center text-sm text-slate-500"
                       >
-                        No report history found.
+                        {timelineSearch.trim()
+                          ? "No reports match your search."
+                          : "No report history found."}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-            {(typeFilter !== "all" || failureFilter) ? (
+            {(typeFilter !== "all" || failureFilter || timelineSearch.trim()) ? (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                {timelineSearch.trim() ? (
+                  <span>
+                    Search: <strong>{timelineSearch.trim()}</strong>
+                  </span>
+                ) : null}
+
                 {typeFilter !== "all" ? (
                   <span>
                     Type: <strong>{reportTypeLabel(typeFilter)}</strong>
@@ -674,6 +741,7 @@ export function MachineDetailPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    setTimelineSearch("");
                     setTypeFilter("all");
                     setFailureFilter(null);
                   }}

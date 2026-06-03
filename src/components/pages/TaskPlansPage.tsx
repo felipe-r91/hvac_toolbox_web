@@ -120,9 +120,19 @@ function taskFromDraft(task: DraftTask): TaskPlanTask {
   };
 }
 
+function buildPlanCode(name: string) {
+  return (
+    name
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "TASK_PLAN"
+  );
+}
+
 function draftToPayload(draft: TaskPlanDraft): TaskPlanPayload {
   return {
-    code: draft.code.trim(),
+    code: draft.code.trim() || buildPlanCode(draft.name),
     name: draft.name.trim(),
     notes: draft.notes.trim(),
     templateType:
@@ -132,7 +142,6 @@ function draftToPayload(draft: TaskPlanDraft): TaskPlanPayload {
 }
 
 function validateDraft(draft: TaskPlanDraft): string | null {
-  if (!draft.code.trim()) return "Plan code is required.";
   if (!draft.name.trim()) return "Plan name is required.";
   if (draft.tasks.length === 0) return "Add at least one task.";
 
@@ -321,18 +330,20 @@ export function TaskPlansPage() {
     try {
       setSaving(true);
       setNotice(null);
+      const payload = draftToPayload(draft);
 
       await saveTaskPlanTemplate(
         draft.kind,
-        draftToPayload(draft),
+        payload,
         draft.isNew ? undefined : draft.originalCode
       );
       await loadPlans();
 
       setDraft({
         ...draft,
+        code: payload.code,
         isNew: false,
-        originalCode: draft.code.trim(),
+        originalCode: payload.code,
       });
       setNotice({
         tone: "success",
@@ -434,91 +445,91 @@ export function TaskPlansPage() {
         ) : null}
       </section>
 
-      <section className="relative rounded-3xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
-        {loading ? (
-          <p className="px-2 py-2 text-sm text-slate-500">Loading task plans...</p>
-        ) : activePlans.length > 0 ? (
-          <>
-            {canScrollPlansLeft ? (
-              <button
-                type="button"
-                title="Scroll plans left"
-                aria-label="Scroll plans left"
-                onClick={() => scrollPlanTabs("left")}
-                className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-md ring-1 ring-slate-200 hover:bg-slate-50"
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="relative shrink-0 px-4 py-3">
+          {loading ? (
+            <p className="px-2 py-2 text-sm text-slate-500">Loading task plans...</p>
+          ) : activePlans.length > 0 ? (
+            <>
+              {canScrollPlansLeft ? (
+                <button
+                  type="button"
+                  title="Scroll plans left"
+                  aria-label="Scroll plans left"
+                  onClick={() => scrollPlanTabs("left")}
+                  className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-md ring-1 ring-slate-200 hover:bg-slate-50"
+                >
+                  <FaChevronLeft className="h-3 w-3" />
+                </button>
+              ) : null}
+
+              <div
+                ref={planTabsRef}
+                className="flex gap-2 overflow-x-auto scroll-smooth pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                <FaChevronLeft className="h-3 w-3" />
-              </button>
-            ) : null}
+                {activePlans.map((plan) => {
+                  const isSelected =
+                    draft?.kind === activeKind && draft.originalCode === plan.code;
 
-            <div
-              ref={planTabsRef}
-              className="flex gap-2 overflow-x-auto scroll-smooth pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {activePlans.map((plan) => {
-                const isSelected =
-                  draft?.kind === activeKind && draft.originalCode === plan.code;
-
-                return (
-                  <article
-                    key={`${activeKind}-${plan.code}`}
-                    onClick={() => selectPlan(activeKind, plan)}
-                    className={`flex h-11 min-w-44 max-w-64 shrink-0 cursor-pointer items-center justify-between gap-3 rounded-t-2xl rounded-b-md px-4 text-sm font-semibold ring-1 transition ${
-                      isSelected
-                        ? "bg-slate-900 text-white ring-slate-900"
-                        : "bg-slate-50 text-slate-800 ring-slate-200 hover:bg-white hover:ring-slate-300"
-                    }`}
-                  >
-                    <span className="min-w-0 truncate">{plan.name}</span>
-
-                    <button
-                      type="button"
-                      title="Delete plan"
-                      aria-label={`Delete ${plan.code}`}
-                      disabled={deletingCode === plan.code}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        deletePlan(activeKind, plan.code);
-                      }}
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full disabled:opacity-60 ${
+                  return (
+                    <article
+                      key={`${activeKind}-${plan.code}`}
+                      onClick={() => selectPlan(activeKind, plan)}
+                      className={`flex h-11 min-w-44 max-w-64 shrink-0 cursor-pointer items-center justify-between gap-3 rounded-t-2xl rounded-b-md px-4 text-sm font-semibold ring-1 transition ${
                         isSelected
-                          ? "bg-white/10 text-white hover:bg-white/20"
-                          : "bg-white text-red-700 ring-1 ring-red-100 hover:bg-red-50"
+                          ? "bg-slate-900 text-white ring-slate-900"
+                          : "bg-slate-50 text-slate-800 ring-slate-200 hover:bg-white hover:ring-slate-300"
                       }`}
                     >
-                      {deletingCode === plan.code ? (
-                        <FaSpinner className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <FaTrash className="h-3 w-3" />
-                      )}
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
+                      <span className="min-w-0 truncate">{plan.name}</span>
 
-            {canScrollPlansRight ? (
-              <button
-                type="button"
-                title="Scroll plans right"
-                aria-label="Scroll plans right"
-                onClick={() => scrollPlanTabs("right")}
-                className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-md ring-1 ring-slate-200 hover:bg-slate-50"
-              >
-                <FaChevronRight className="h-3 w-3" />
-              </button>
-            ) : null}
-          </>
-        ) : (
-          <p className="px-2 py-2 text-sm text-slate-500">
-            No {activeKind === "maintenance" ? "maintenance" : "health-check"} plans found.
-          </p>
-        )}
-      </section>
+                      <button
+                        type="button"
+                        title="Delete plan"
+                        aria-label={`Delete ${plan.code}`}
+                        disabled={deletingCode === plan.code}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          deletePlan(activeKind, plan.code);
+                        }}
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full disabled:opacity-60 ${
+                          isSelected
+                            ? "bg-white/10 text-white hover:bg-white/20"
+                            : "bg-white text-red-700 ring-1 ring-red-100 hover:bg-red-50"
+                        }`}
+                      >
+                        {deletingCode === plan.code ? (
+                          <FaSpinner className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <FaTrash className="h-3 w-3" />
+                        )}
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
 
-      <section className="min-h-0 flex-1 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-          {draft ? (
-            <div className="flex h-full min-h-0 flex-col">
+              {canScrollPlansRight ? (
+                <button
+                  type="button"
+                  title="Scroll plans right"
+                  aria-label="Scroll plans right"
+                  onClick={() => scrollPlanTabs("right")}
+                  className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-md ring-1 ring-slate-200 hover:bg-slate-50"
+                >
+                  <FaChevronRight className="h-3 w-3" />
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <p className="px-2 py-2 text-sm text-slate-500">
+              No {activeKind === "maintenance" ? "maintenance" : "health-check"} plans found.
+            </p>
+          )}
+        </div>
+
+        {draft ? (
+          <div className="flex min-h-0 flex-1 flex-col">
               <div className="border-b border-slate-200 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -559,19 +570,7 @@ export function TaskPlansPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-4">
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-slate-600">
-                      Code
-                    </span>
-                    <input
-                      value={draft.code}
-                      disabled={!draft.isNew}
-                      onChange={(event) => updateDraft("code", event.target.value)}
-                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none disabled:bg-slate-100 disabled:text-slate-500"
-                    />
-                  </label>
-
+                <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
                   <label className="block lg:col-span-2">
                     <span className="mb-1 block text-sm font-medium text-slate-600">
                       Name
@@ -612,18 +611,6 @@ export function TaskPlansPage() {
                       </div>
                     </div>
                   )}
-
-                  <label className="block lg:col-span-4">
-                    <span className="mb-1 block text-sm font-medium text-slate-600">
-                      Notes
-                    </span>
-                    <textarea
-                      value={draft.notes}
-                      onChange={(event) => updateDraft("notes", event.target.value)}
-                      rows={2}
-                      className="w-full resize-none rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none"
-                    />
-                  </label>
                 </div>
               </div>
 
@@ -764,8 +751,8 @@ export function TaskPlansPage() {
                 </table>
               </div>
             </div>
-          ) : (
-            <div className="flex h-full items-center justify-center p-8 text-center">
+        ) : (
+            <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
                   Select or create a task plan
@@ -775,7 +762,7 @@ export function TaskPlansPage() {
                 </p>
               </div>
             </div>
-          )}
+        )}
       </section>
     </section>
   );

@@ -56,7 +56,7 @@ const kindLabels: Record<TaskPlanKind, string> = {
 };
 
 const taskGridColumns =
-  "grid-cols-[10rem_10rem_minmax(18rem,1fr)_9rem_7rem_6rem_7rem_7rem_8rem_4rem]";
+  "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2.1fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_3rem]";
 
 const emptyTask = (): DraftTask => ({
   id: "",
@@ -394,7 +394,7 @@ export function TaskPlansPage() {
   };
 
   return (
-    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
+    <section className="flex min-h-0 flex-col gap-4">
       <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex rounded-2xl bg-slate-100 p-1">
@@ -448,7 +448,7 @@ export function TaskPlansPage() {
         ) : null}
       </section>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
         <div className="relative shrink-0 px-4 py-3">
           {loading ? (
             <p className="px-2 py-2 text-sm text-slate-500">Loading task plans...</p>
@@ -532,7 +532,7 @@ export function TaskPlansPage() {
         </div>
 
         {draft ? (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-col">
               <div className="border-b border-slate-200 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -617,39 +617,39 @@ export function TaskPlansPage() {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-x-auto">
-                <div className="flex h-full min-w-[1050px] flex-col">
+              <div className="min-h-0 overflow-hidden">
+                <div className="flex w-full flex-col">
                   <div
                     className={`grid ${taskGridColumns} shrink-0 bg-slate-50 text-left`}
                   >
-                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-3 py-3 text-sm font-semibold text-slate-700">
                       Task code
                     </div>
-                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-3 py-3 text-sm font-semibold text-slate-700">
                       Category
                     </div>
-                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-3 py-3 text-sm font-semibold text-slate-700">
                       Task
                     </div>
-                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-3 py-3 text-sm font-semibold text-slate-700">
                       Tool
                     </div>
-                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-3 py-3 text-sm font-semibold text-slate-700">
                       Unit
                     </div>
-                    <div className="px-4 py-3 text-center text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-2 py-3 text-center text-sm font-semibold text-slate-700">
                       Required
                     </div>
-                    <div className="px-4 py-3 text-center text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-2 py-3 text-center text-sm font-semibold text-slate-700">
                       Measurable
                     </div>
-                    <div className="px-4 py-3 text-center text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-2 py-3 text-center text-sm font-semibold text-slate-700">
                       Fault photo
                     </div>
-                    <div className="px-4 py-3 text-center text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-2 py-3 text-center text-sm font-semibold text-slate-700">
                       Attention photo
                     </div>
-                    <div className="px-4 py-3 text-right text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 px-2 py-3 text-right text-sm font-semibold text-slate-700">
                       <button
                         type="button"
                         title="Add task"
@@ -662,13 +662,13 @@ export function TaskPlansPage() {
                     </div>
                   </div>
 
-                  <div className="min-h-0 flex-1 overflow-y-auto">
+                  <div className="max-h-[42vh] overflow-y-auto">
                     {draft.tasks.map((task, index) => (
                       <div
                         key={index}
                         className={`grid ${taskGridColumns} border-t border-slate-200`}
                       >
-                        <div className="px-4 py-3 align-top">
+                        <div className="min-w-0 px-3 py-3 align-top">
                           <input
                             value={task.id}
                             onChange={(event) =>
@@ -677,7 +677,7 @@ export function TaskPlansPage() {
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none"
                           />
                         </div>
-                        <div className="px-4 py-3 align-top">
+                        <div className="min-w-0 px-3 py-3 align-top">
                           <input
                             value={task.category}
                             onChange={(event) =>
@@ -686,7 +686,7 @@ export function TaskPlansPage() {
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none"
                           />
                         </div>
-                        <div className="px-4 py-3 align-top">
+                        <div className="min-w-0 px-3 py-3 align-top">
                           <textarea
                             value={task.task}
                             onChange={(event) =>
@@ -696,7 +696,7 @@ export function TaskPlansPage() {
                             className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none"
                           />
                         </div>
-                        <div className="px-4 py-3 align-top">
+                        <div className="min-w-0 px-3 py-3 align-top">
                           <input
                             value={task.tool}
                             onChange={(event) =>
@@ -705,7 +705,7 @@ export function TaskPlansPage() {
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none"
                           />
                         </div>
-                        <div className="px-4 py-3 align-top">
+                        <div className="min-w-0 px-3 py-3 align-top">
                           <input
                             value={task.unit}
                             onChange={(event) =>
@@ -722,7 +722,7 @@ export function TaskPlansPage() {
                             "photoRequiredOnAttention",
                           ] as const
                         ).map((field) => (
-                          <div key={field} className="px-4 py-3 text-center align-top">
+                          <div key={field} className="min-w-0 px-2 py-3 text-center align-top">
                             <label className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-slate-100 text-slate-700">
                               <input
                                 type="checkbox"
@@ -740,7 +740,7 @@ export function TaskPlansPage() {
                             </label>
                           </div>
                         ))}
-                        <div className="px-4 py-3 text-right align-top">
+                        <div className="min-w-0 px-2 py-3 text-right align-top">
                           <button
                             type="button"
                             title="Remove task"

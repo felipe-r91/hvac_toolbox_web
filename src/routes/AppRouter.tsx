@@ -16,6 +16,7 @@ import {
 } from "../components/pages/MachineMaintenanceReportDetailPage";
 import { AiGenerationPage } from "../components/pages/AiGenerationPage";
 import { DailyReportDetailPage } from "../components/pages/DailyReportDetailPage";
+import { TaskPlansPage } from "../components/pages/TaskPlansPage";
 
 export function AppRouter() {
   return (
@@ -27,6 +28,7 @@ export function AppRouter() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/machines" element={<MachinesPage />} />
+          <Route path="/task-plans" element={<TaskPlansPage />} />
           <Route path="/vessels" element={<VesselsPage />} />
           <Route path="/ai-generation-service/:reportType/:reportId" element={<AiGenerationService />} />
           <Route path="/insights" element={<InsightsPage />} />

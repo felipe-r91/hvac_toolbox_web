@@ -55,6 +55,9 @@ const kindLabels: Record<TaskPlanKind, string> = {
   "health-check": "Health-check plans",
 };
 
+const taskGridColumns =
+  "grid-cols-[10rem_10rem_minmax(18rem,1fr)_9rem_7rem_6rem_7rem_7rem_8rem_4rem]";
+
 const emptyTask = (): DraftTask => ({
   id: "",
   category: "",
@@ -391,7 +394,7 @@ export function TaskPlansPage() {
   };
 
   return (
-    <section className="flex min-h-0 flex-col gap-4">
+    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
       <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex rounded-2xl bg-slate-100 p-1">
@@ -445,7 +448,7 @@ export function TaskPlansPage() {
         ) : null}
       </section>
 
-      <section className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
         <div className="relative shrink-0 px-4 py-3">
           {loading ? (
             <p className="px-2 py-2 text-sm text-slate-500">Loading task plans...</p>
@@ -475,7 +478,7 @@ export function TaskPlansPage() {
                     <article
                       key={`${activeKind}-${plan.code}`}
                       onClick={() => selectPlan(activeKind, plan)}
-                      className={`flex h-11 my-0.5 min-w-44 max-w-64 shrink-0 cursor-pointer items-center justify-between gap-3 rounded-t-2xl rounded-b-md px-4 text-sm font-semibold ring-1 transition ${
+                      className={`flex h-11 m-0.5 min-w-44 max-w-64 shrink-0 cursor-pointer items-center justify-between gap-3 rounded-t-2xl rounded-b-md px-4 text-sm font-semibold ring-1 transition ${
                         isSelected
                           ? "bg-slate-900 text-white ring-slate-900"
                           : "bg-slate-50 text-slate-800 ring-slate-200 hover:bg-white hover:ring-slate-300"
@@ -529,7 +532,7 @@ export function TaskPlansPage() {
         </div>
 
         {draft ? (
-          <div className="flex min-h-0 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col">
               <div className="border-b border-slate-200 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -614,55 +617,58 @@ export function TaskPlansPage() {
                 </div>
               </div>
 
-              <div className="min-h-0 overflow-x-auto">
-                  <table className="min-w-[1050px] border-collapse">
-                    <thead className="bg-slate-50">
-                    <tr className="text-left">
-                      <th className="w-40 px-4 py-3 text-sm font-semibold text-slate-700">
-                        Task code
-                      </th>
-                      <th className="w-40 px-4 py-3 text-sm font-semibold text-slate-700">
-                        Category
-                      </th>
-                      <th className="min-w-72 px-4 py-3 text-sm font-semibold text-slate-700">
-                        Task
-                      </th>
-                      <th className="w-36 px-4 py-3 text-sm font-semibold text-slate-700">
-                        Tool
-                      </th>
-                      <th className="w-28 px-4 py-3 text-sm font-semibold text-slate-700">
-                        Unit
-                      </th>
-                      <th className="w-24 px-4 py-3 text-center text-sm font-semibold text-slate-700">
-                        Required
-                      </th>
-                      <th className="w-28 px-4 py-3 text-center text-sm font-semibold text-slate-700">
-                        Measurable
-                      </th>
-                      <th className="w-28 px-4 py-3 text-center text-sm font-semibold text-slate-700">
-                        Fault photo
-                      </th>
-                      <th className="w-32 px-4 py-3 text-center text-sm font-semibold text-slate-700">
-                        Attention photo
-                      </th>
-                      <th className="w-16 px-4 py-3 text-right text-sm font-semibold text-slate-700">
-                        <button
-                          type="button"
-                          title="Add task"
-                          aria-label="Add task"
-                          onClick={addTask}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white"
-                        >
-                          <FaPlus className="h-3 w-3" />
-                        </button>
-                      </th>
-                    </tr>
-                  </thead>
+              <div className="min-h-0 flex-1 overflow-x-auto">
+                <div className="flex h-full min-w-[1050px] flex-col">
+                  <div
+                    className={`grid ${taskGridColumns} shrink-0 bg-slate-50 text-left`}
+                  >
+                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                      Task code
+                    </div>
+                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                      Category
+                    </div>
+                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                      Task
+                    </div>
+                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                      Tool
+                    </div>
+                    <div className="px-4 py-3 text-sm font-semibold text-slate-700">
+                      Unit
+                    </div>
+                    <div className="px-4 py-3 text-center text-sm font-semibold text-slate-700">
+                      Required
+                    </div>
+                    <div className="px-4 py-3 text-center text-sm font-semibold text-slate-700">
+                      Measurable
+                    </div>
+                    <div className="px-4 py-3 text-center text-sm font-semibold text-slate-700">
+                      Fault photo
+                    </div>
+                    <div className="px-4 py-3 text-center text-sm font-semibold text-slate-700">
+                      Attention photo
+                    </div>
+                    <div className="px-4 py-3 text-right text-sm font-semibold text-slate-700">
+                      <button
+                        type="button"
+                        title="Add task"
+                        aria-label="Add task"
+                        onClick={addTask}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white"
+                      >
+                        <FaPlus className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
 
-                  <tbody>
+                  <div className="min-h-0 flex-1 overflow-y-auto">
                     {draft.tasks.map((task, index) => (
-                      <tr key={index} className="border-t border-slate-200">
-                        <td className="px-4 py-3 align-top">
+                      <div
+                        key={index}
+                        className={`grid ${taskGridColumns} border-t border-slate-200`}
+                      >
+                        <div className="px-4 py-3 align-top">
                           <input
                             value={task.id}
                             onChange={(event) =>
@@ -670,8 +676,8 @@ export function TaskPlansPage() {
                             }
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none"
                           />
-                        </td>
-                        <td className="px-4 py-3 align-top">
+                        </div>
+                        <div className="px-4 py-3 align-top">
                           <input
                             value={task.category}
                             onChange={(event) =>
@@ -679,8 +685,8 @@ export function TaskPlansPage() {
                             }
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none"
                           />
-                        </td>
-                        <td className="px-4 py-3 align-top">
+                        </div>
+                        <div className="px-4 py-3 align-top">
                           <textarea
                             value={task.task}
                             onChange={(event) =>
@@ -689,8 +695,8 @@ export function TaskPlansPage() {
                             rows={2}
                             className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none"
                           />
-                        </td>
-                        <td className="px-4 py-3 align-top">
+                        </div>
+                        <div className="px-4 py-3 align-top">
                           <input
                             value={task.tool}
                             onChange={(event) =>
@@ -698,8 +704,8 @@ export function TaskPlansPage() {
                             }
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none"
                           />
-                        </td>
-                        <td className="px-4 py-3 align-top">
+                        </div>
+                        <div className="px-4 py-3 align-top">
                           <input
                             value={task.unit}
                             onChange={(event) =>
@@ -707,7 +713,7 @@ export function TaskPlansPage() {
                             }
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none"
                           />
-                        </td>
+                        </div>
                         {(
                           [
                             "required",
@@ -716,7 +722,7 @@ export function TaskPlansPage() {
                             "photoRequiredOnAttention",
                           ] as const
                         ).map((field) => (
-                          <td key={field} className="px-4 py-3 text-center align-top">
+                          <div key={field} className="px-4 py-3 text-center align-top">
                             <label className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-slate-100 text-slate-700">
                               <input
                                 type="checkbox"
@@ -732,9 +738,9 @@ export function TaskPlansPage() {
                                 <FaTimes className="h-3 w-3 text-slate-400" />
                               )}
                             </label>
-                          </td>
+                          </div>
                         ))}
-                        <td className="px-4 py-3 text-right align-top">
+                        <div className="px-4 py-3 text-right align-top">
                           <button
                             type="button"
                             title="Remove task"
@@ -744,13 +750,13 @@ export function TaskPlansPage() {
                           >
                             <FaTrash className="h-3 w-3" />
                           </button>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                  </table>
+                  </div>
                 </div>
               </div>
+            </div>
         ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center">
               <div>

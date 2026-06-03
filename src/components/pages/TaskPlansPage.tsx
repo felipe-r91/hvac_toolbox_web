@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FaCheck,
-  FaPen,
+  FaChevronLeft,
+  FaChevronRight,
   FaPlus,
   FaSave,
   FaSpinner,
@@ -146,12 +147,6 @@ function validateDraft(draft: TaskPlanDraft): string | null {
   return null;
 }
 
-function planTypeLabel(plan: TaskPlanTemplate) {
-  if (plan.templateType === "HEALTH_CHECK") return "Health check";
-  if (plan.templateType === "STARTER") return "Starter type";
-  return "Machine model";
-}
-
 export function TaskPlansPage() {
   const [plans, setPlans] = useState<Record<TaskPlanKind, TaskPlanTemplate[]>>({
     maintenance: [],
@@ -163,6 +158,9 @@ export function TaskPlansPage() {
   const [saving, setSaving] = useState(false);
   const [deletingCode, setDeletingCode] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [canScrollPlansLeft, setCanScrollPlansLeft] = useState(false);
+  const [canScrollPlansRight, setCanScrollPlansRight] = useState(false);
+  const planTabsRef = useRef<HTMLDivElement | null>(null);
 
   const activePlans = plans[activeKind];
 
@@ -228,6 +226,35 @@ export function TaskPlansPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const element = planTabsRef.current;
+    if (!element) return;
+
+    element.scrollLeft = 0;
+
+    const updateScrollState = () => {
+      const maxScrollLeft = element.scrollWidth - element.clientWidth;
+      setCanScrollPlansLeft(element.scrollLeft > 0);
+      setCanScrollPlansRight(element.scrollLeft < maxScrollLeft - 1);
+    };
+
+    updateScrollState();
+    window.addEventListener("resize", updateScrollState);
+    element.addEventListener("scroll", updateScrollState);
+
+    return () => {
+      window.removeEventListener("resize", updateScrollState);
+      element.removeEventListener("scroll", updateScrollState);
+    };
+  }, [activeKind, activePlans.length]);
+
+  const scrollPlanTabs = (direction: "left" | "right") => {
+    planTabsRef.current?.scrollBy({
+      left: direction === "right" ? 180 : -180,
+      behavior: "smooth",
+    });
+  };
 
   const selectPlan = (kind: TaskPlanKind, plan: TaskPlanTemplate) => {
     setActiveKind(kind);
@@ -407,12 +434,27 @@ export function TaskPlansPage() {
         ) : null}
       </section>
 
-      <section className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
-        <aside className="min-h-0 overflow-auto rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          {loading ? (
-            <p className="p-2 text-sm text-slate-500">Loading task plans...</p>
-          ) : activePlans.length > 0 ? (
-            <div className="space-y-3">
+      <section className="relative rounded-3xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+        {loading ? (
+          <p className="px-2 py-2 text-sm text-slate-500">Loading task plans...</p>
+        ) : activePlans.length > 0 ? (
+          <>
+            {canScrollPlansLeft ? (
+              <button
+                type="button"
+                title="Scroll plans left"
+                aria-label="Scroll plans left"
+                onClick={() => scrollPlanTabs("left")}
+                className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-md ring-1 ring-slate-200 hover:bg-slate-50"
+              >
+                <FaChevronLeft className="h-3 w-3" />
+              </button>
+            ) : null}
+
+            <div
+              ref={planTabsRef}
+              className="flex gap-2 overflow-x-auto scroll-smooth pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
               {activePlans.map((plan) => {
                 const isSelected =
                   draft?.kind === activeKind && draft.originalCode === plan.code;
@@ -421,111 +463,60 @@ export function TaskPlansPage() {
                   <article
                     key={`${activeKind}-${plan.code}`}
                     onClick={() => selectPlan(activeKind, plan)}
-                    className={`cursor-pointer rounded-3xl p-4 ring-1 transition ${
+                    className={`flex h-11 min-w-44 max-w-64 shrink-0 cursor-pointer items-center justify-between gap-3 rounded-t-2xl rounded-b-md px-4 text-sm font-semibold ring-1 transition ${
                       isSelected
                         ? "bg-slate-900 text-white ring-slate-900"
-                        : "bg-white text-slate-900 ring-slate-200 hover:ring-slate-300"
+                        : "bg-slate-50 text-slate-800 ring-slate-200 hover:bg-white hover:ring-slate-300"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h2 className="truncate text-base font-semibold">
-                          {plan.name}
-                        </h2>
-                        <p
-                          className={`mt-1 truncate text-xs ${
-                            isSelected ? "text-slate-300" : "text-slate-500"
-                          }`}
-                        >
-                          {plan.code}
-                        </p>
-                      </div>
+                    <span className="min-w-0 truncate">{plan.name}</span>
 
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          type="button"
-                          title="Edit plan"
-                          aria-label={`Edit ${plan.code}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            selectPlan(activeKind, plan);
-                          }}
-                          className={`rounded-full p-2 ${
-                            isSelected
-                              ? "bg-white/10 text-white hover:bg-white/20"
-                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                          }`}
-                        >
-                          <FaPen className="h-3 w-3" />
-                        </button>
-
-                        <button
-                          type="button"
-                          title="Delete plan"
-                          aria-label={`Delete ${plan.code}`}
-                          disabled={deletingCode === plan.code}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            deletePlan(activeKind, plan.code);
-                          }}
-                          className={`rounded-full p-2 disabled:opacity-60 ${
-                            isSelected
-                              ? "bg-white/10 text-white hover:bg-white/20"
-                              : "bg-red-50 text-red-700 hover:bg-red-100"
-                          }`}
-                        >
-                          {deletingCode === plan.code ? (
-                            <FaSpinner className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <FaTrash className="h-3 w-3" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          isSelected
-                            ? "bg-white/10 text-slate-100"
-                            : "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        {planTypeLabel(plan)}
-                      </span>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          isSelected
-                            ? "bg-white/10 text-slate-100"
-                            : "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        {plan.tasks.length} task{plan.tasks.length === 1 ? "" : "s"}
-                      </span>
-                      {plan.versionNumber ? (
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-medium ${
-                            isSelected
-                              ? "bg-white/10 text-slate-100"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          v{plan.versionNumber}
-                        </span>
-                      ) : null}
-                    </div>
+                    <button
+                      type="button"
+                      title="Delete plan"
+                      aria-label={`Delete ${plan.code}`}
+                      disabled={deletingCode === plan.code}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deletePlan(activeKind, plan.code);
+                      }}
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full disabled:opacity-60 ${
+                        isSelected
+                          ? "bg-white/10 text-white hover:bg-white/20"
+                          : "bg-white text-red-700 ring-1 ring-red-100 hover:bg-red-50"
+                      }`}
+                    >
+                      {deletingCode === plan.code ? (
+                        <FaSpinner className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <FaTrash className="h-3 w-3" />
+                      )}
+                    </button>
                   </article>
                 );
               })}
             </div>
-          ) : (
-            <p className="p-2 text-sm text-slate-500">
-              No {activeKind === "maintenance" ? "maintenance" : "health-check"} plans found.
-            </p>
-          )}
-        </aside>
 
-        <section className="min-h-0 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+            {canScrollPlansRight ? (
+              <button
+                type="button"
+                title="Scroll plans right"
+                aria-label="Scroll plans right"
+                onClick={() => scrollPlanTabs("right")}
+                className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-md ring-1 ring-slate-200 hover:bg-slate-50"
+              >
+                <FaChevronRight className="h-3 w-3" />
+              </button>
+            ) : null}
+          </>
+        ) : (
+          <p className="px-2 py-2 text-sm text-slate-500">
+            No {activeKind === "maintenance" ? "maintenance" : "health-check"} plans found.
+          </p>
+        )}
+      </section>
+
+      <section className="min-h-0 flex-1 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
           {draft ? (
             <div className="flex h-full min-h-0 flex-col">
               <div className="border-b border-slate-200 p-5">
@@ -785,7 +776,6 @@ export function TaskPlansPage() {
               </div>
             </div>
           )}
-        </section>
       </section>
     </section>
   );

@@ -48,10 +48,10 @@ export function Sidebar() {
             />
 
             <div className="min-w-0 overflow-hidden whitespace-nowrap">
-              <h1 className="text-xl font-semibold text-slate-900">
+              <h1 className="text-sm font-semibold text-slate-900">
                 HVAC Toolbox
               </h1>
-              <p className="mt-1 text-sm text-slate-500">Fleet management</p>
+              <p className="mt-1 text-xs text-slate-500">Fleet management</p>
             </div>
           </div>
 

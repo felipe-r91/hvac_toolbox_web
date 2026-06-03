@@ -92,6 +92,13 @@ export type MachineMaintenanceReportDetail = {
   photos?: ReportPhotoDetail[];
 };
 
+export type HealthCheckReportDetail = Omit<
+  MachineMaintenanceReportDetail,
+  "reportCategory"
+> & {
+  reportCategory: "health_check";
+};
+
 export type ServiceReportDetail = {
   id: string;
   vesselId: string;

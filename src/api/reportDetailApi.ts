@@ -1,6 +1,7 @@
 import type {
   CfrDraftDetail,
   DailyReportDetail,
+  HealthCheckReportDetail,
   MachineMaintenanceReportDetail,
   ServiceReportDetail,
 } from "../types/report";
@@ -14,6 +15,32 @@ export async function getMachineMaintenanceReportById(
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Failed to load machine maintenance report ${id}: ${text}`);
+  }
+
+  return response.json();
+}
+
+export async function getHealthCheckReportById(
+  id: string
+): Promise<HealthCheckReportDetail> {
+  const response = await fetch(`${API_BASE_URL}/api/reports/health-check/${id}`);
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to load health check report ${id}: ${text}`);
+  }
+
+  return response.json();
+}
+
+export async function getHealthCheckReportsByMachine(
+  machineId: string
+): Promise<HealthCheckReportDetail[]> {
+  const response = await fetch(`${API_BASE_URL}/api/reports/machines/${machineId}/health-check`);
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to load health check reports for machine ${machineId}: ${text}`);
   }
 
   return response.json();

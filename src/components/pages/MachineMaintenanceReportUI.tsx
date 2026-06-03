@@ -67,6 +67,8 @@ export type AiMachineMaintenanceReport = {
   ehsStatement?: string;
 };
 
+export type AiHealthCheckReport = AiMachineMaintenanceReport;
+
 export type MaintenanceAlarmItem = {
   description?: string;
   status?: string;
@@ -157,6 +159,59 @@ export type SourceMachineMaintenanceReport = {
   reportCategory?: string;
   tasks?: SourceMaintenanceTask[];
   photos?: SourceMaintenancePhoto[];
+};
+
+export type SourceHealthCheckReport = SourceMachineMaintenanceReport;
+
+export type ReportUiKind = {
+  sourceReportType: "machine_maintenance" | "health_check";
+  reportNoPrefix: string;
+  filenameFallback: string;
+  defaultTitle: string;
+  defaultResultText: string;
+  statusTitle: string;
+  informationTitle: string;
+  reportTypeLabel: string;
+  activitiesTitle: string;
+  activitiesContdTitle: string;
+  emptyActivitiesText: string;
+  saveSuccessMessage: string;
+  saveFailureMessage: string;
+  printAreaId: string;
+};
+
+const machineMaintenanceUiKind: ReportUiKind = {
+  sourceReportType: "machine_maintenance",
+  reportNoPrefix: "MMR",
+  filenameFallback: "machine-maintenance-report",
+  defaultTitle: "Machine Maintenance Report",
+  defaultResultText: "Maintenance result not provided.",
+  statusTitle: "Machine Maintenance Report Status",
+  informationTitle: "Maintenance Information",
+  reportTypeLabel: "Machine Maintenance",
+  activitiesTitle: "Maintenance Activities",
+  activitiesContdTitle: "Maintenance Activities Contd.",
+  emptyActivitiesText: "No maintenance activities provided.",
+  saveSuccessMessage: "Machine maintenance report saved successfully.",
+  saveFailureMessage: "Failed to save machine maintenance report.",
+  printAreaId: "machine-maintenance-report-print-area",
+};
+
+const healthCheckUiKind: ReportUiKind = {
+  sourceReportType: "health_check",
+  reportNoPrefix: "HCR",
+  filenameFallback: "health-check-report",
+  defaultTitle: "Health Check Report",
+  defaultResultText: "Health check result not provided.",
+  statusTitle: "Health Check Report Status",
+  informationTitle: "Health Check Information",
+  reportTypeLabel: "Health Check",
+  activitiesTitle: "Health Check Activities",
+  activitiesContdTitle: "Health Check Activities Contd.",
+  emptyActivitiesText: "No health check activities provided.",
+  saveSuccessMessage: "Health check report saved successfully.",
+  saveFailureMessage: "Failed to save health check report.",
+  printAreaId: "health-check-report-print-area",
 };
 
 type NormalizedMaintenanceReport = {
@@ -569,10 +624,12 @@ function ReportHeader({
   report,
   isPrintPreview,
   hasActiveAlarm,
+  statusTitle,
 }: {
   report: NormalizedMaintenanceReport;
   isPrintPreview: boolean;
   hasActiveAlarm: boolean;
+  statusTitle: string;
 }) {
   return (
     <header className="avoid-break overflow-hidden rounded-md border border-slate-300 bg-white">
@@ -606,7 +663,7 @@ function ReportHeader({
       <div className="border-t border-slate-300 bg-white px-4 py-3">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
-            <EditableText>Machine Maintenance Report Status</EditableText>
+            <EditableText>{statusTitle}</EditableText>
           </p>
           <div className="flex flex-wrap gap-2">
             <StatusPill
@@ -909,13 +966,18 @@ function AlarmCard({
 export default function MachineMaintenanceReportUI({
   aiReport,
   sourceReport,
+  variant = "machine_maintenance",
 }: {
   aiReport: AiMachineMaintenanceReport;
   sourceReport: SourceMachineMaintenanceReport;
+  variant?: "machine_maintenance" | "health_check";
 }) {
+  const uiKind =
+    variant === "health_check" ? healthCheckUiKind : machineMaintenanceUiKind;
+
   const report: NormalizedMaintenanceReport = {
-    reportNo: aiReport.reportNo || `MMR-${sourceReport.id || "DRAFT"}`,
-    title: aiReport.title || "Machine Maintenance Report",
+    reportNo: aiReport.reportNo || `${uiKind.reportNoPrefix}-${sourceReport.id || "DRAFT"}`,
+    title: aiReport.title || uiKind.defaultTitle,
     subtitle:
       aiReport.subtitle ||
       `${sourceReport.machineTag || "Machine"} - ${sourceReport.machineType || ""}`,
@@ -931,7 +993,7 @@ export default function MachineMaintenanceReportUI({
     location: aiReport.location || sourceReport.machineLocation || "",
     machineStatus: aiReport.machineStatus || statusLabel(sourceReport.overallStatus) || "",
     maintenanceResult:
-      aiReport.maintenanceResult || "Maintenance result not provided.",
+      aiReport.maintenanceResult || uiKind.defaultResultText,
     alarmStatus: aiReport.alarmStatus || "No alarm reported",
 
     vessel: {
@@ -1239,7 +1301,7 @@ export default function MachineMaintenanceReportUI({
 
       await waitForRender();
 
-      const filename = `${report.reportNo || "machine-maintenance-report"}.pdf`.replaceAll(
+      const filename = `${report.reportNo || uiKind.filenameFallback}.pdf`.replaceAll(
         /[^a-zA-Z0-9._-]/g,
         "_"
       );
@@ -1252,7 +1314,7 @@ export default function MachineMaintenanceReportUI({
       await uploadCustomerReportPdf(
         {
           sourceReportId: sourceReport.id,
-          sourceReportType: "machine_maintenance",
+          sourceReportType: uiKind.sourceReportType,
 
           vesselId: sourceReport.vesselId,
           vesselName: sourceReport.vesselName,
@@ -1269,10 +1331,10 @@ export default function MachineMaintenanceReportUI({
         pdfFile
       );
 
-      alert("Machine maintenance report saved successfully.");
+      alert(uiKind.saveSuccessMessage);
     } catch (error) {
       console.error(error);
-      alert("Failed to save machine maintenance report.");
+      alert(uiKind.saveFailureMessage);
     } finally {
       setIsUploadingReport(false);
     }
@@ -1286,7 +1348,7 @@ export default function MachineMaintenanceReportUI({
     return (
       <Section
         icon={FaTools}
-        title={chunkIndex === 0 ? "Maintenance Activities" : "Maintenance Activities Contd."}
+        title={chunkIndex === 0 ? uiKind.activitiesTitle : uiKind.activitiesContdTitle}
       >
         {activityChunk.length > 0 ? (
           <div className="space-y-3">
@@ -1323,7 +1385,7 @@ export default function MachineMaintenanceReportUI({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">No maintenance activities provided.</p>
+          <p className="text-sm text-slate-500">{uiKind.emptyActivitiesText}</p>
         )}
       </Section>
     );
@@ -1471,14 +1533,14 @@ export default function MachineMaintenanceReportUI({
 
       case "service":
         return (
-          <Section icon={FaClipboardCheck} title="Maintenance Information">
+          <Section icon={FaClipboardCheck} title={uiKind.informationTitle}>
             <div className="grid gap-x-4 md:grid-cols-2">
               <InfoRow label="Service Order No." value={report.serviceOrder} />
               <InfoRow label="Project Manager" value={report.projectManager} />
               <InfoRow label="Date" value={report.date} />
               <InfoRow label="Location" value={report.location} />
               <InfoRow label="Service Engineer" value={report.engineer} />
-              <InfoRow label="Report Type" value="Machine Maintenance" />
+              <InfoRow label="Report Type" value={uiKind.reportTypeLabel} />
               <InfoRow label="Machine Status" value={report.machineStatus} />
               <InfoRow label="Alarm Status" value={report.alarmStatus} />
             </div>
@@ -1658,7 +1720,7 @@ export default function MachineMaintenanceReportUI({
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <main
           ref={reportRef}
-          id="machine-maintenance-report-print-area"
+          id={uiKind.printAreaId}
           className={`${isPrintPreview ? "max-w-[210mm]" : "max-w-[225mm]"} report-print-area mx-auto space-y-6 print:max-w-[210mm] print:space-y-0`}
         >
           {pages.map((page, pageIndex) => (
@@ -1677,6 +1739,7 @@ export default function MachineMaintenanceReportUI({
                     report={report}
                     isPrintPreview={isPrintPreview}
                     hasActiveAlarm={hasActiveAlarm}
+                    statusTitle={uiKind.statusTitle}
                   />
                 )}
 

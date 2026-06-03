@@ -21,6 +21,10 @@ function reportTypeClasses(type: OfficeReportCategory) {
     return "bg-blue-100 text-blue-800";
   }
 
+  if (type === "health_check") {
+    return "bg-cyan-100 text-cyan-800";
+  }
+
   if (type === "service_report") {
     return "bg-yellow-100 text-yellow-800";
   }
@@ -34,6 +38,7 @@ function reportTypeClasses(type: OfficeReportCategory) {
 
 function reportTypeLabel(type: OfficeReportCategory) {
   if (type === "machine_maintenance") return "Machine Maintenance";
+  if (type === "health_check") return "Health Check";
   if (type === "service_report") return "Service";
   if (type === "daily") return "Daily";
   return "CFR";
@@ -93,6 +98,7 @@ function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem
   const serviceReports = items.filter((item) => item.reportCategory === "service_report");
   const cfr = items.filter((item) => item.reportCategory === "cfr");
   const daily = items.filter((item) => item.reportCategory === "daily");
+  const healthCheck = items.filter((item) => item.reportCategory === "health_check");
 
   const serviceReportBySourceMachineMaintenanceId = new Map<string, MachineTimelineItem>();
   const serviceReportById = new Map(serviceReports.map((item) => [item.id, item]));
@@ -157,6 +163,14 @@ function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem
     });
   });
 
+  healthCheck.forEach((healthCheckItem) => {
+    merged.push({
+      kind: "single",
+      item: healthCheckItem,
+      date: healthCheckItem.date,
+    });
+  });
+
   return merged.sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -165,6 +179,10 @@ function buildDisplayTimeline(items: MachineTimelineItem[]): DisplayTimelineItem
 function getReportLink(item: MachineTimelineItem) {
   if (item.reportCategory === "machine_maintenance") {
     return `/machine-maintenance-reports/${item.id}`;
+  }
+
+  if (item.reportCategory === "health_check") {
+    return `/health-check-reports/${item.id}`;
   }
 
   if (item.reportCategory === "service_report") {
@@ -353,7 +371,8 @@ export function MachineDetailPage() {
 
                 <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
                   MMR: {machine.machineMaintenanceReportCount} · SR:{" "}
-                  {machine.serviceReportDraftCount ?? 0} · CFR: {machine.cfrDraftCount}
+                  {machine.serviceReportDraftCount ?? 0} · HC:{" "}
+                  {machine.healthCheckReportCount ?? 0} · CFR: {machine.cfrDraftCount}
                   {machine.dailyDraftCount !== undefined ? ` · Daily: ${machine.dailyDraftCount}` : ""}
                 </div>
               </div>
@@ -470,6 +489,17 @@ export function MachineDetailPage() {
                             >
                               <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
                               Machine Maintenance
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setTypeFilter("health_check");
+                                setIsTypeMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                            >
+                              <span className="h-2.5 w-2.5 rounded-full bg-cyan-500" />
+                              Health Check
                             </button>
 
                             <button

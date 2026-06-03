@@ -24,11 +24,16 @@ import type {
   AiMachineMaintenanceReport,
   SourceMachineMaintenanceReport,
 } from "./MachineMaintenanceReportUI";
+import type {
+  AiHealthCheckReport,
+  SourceHealthCheckReport,
+} from "./HealthCheckReportUI";
 
 function typeLabel(type: DraftReportType) {
   if (type === "cfr") return "CFR";
   if (type === "service_report") return "Service";
   if (type === "daily") return "Daily";
+  if (type === "health_check") return "Health Check";
   return "Machine Maintenance";
 }
 
@@ -36,6 +41,7 @@ function typeClasses(type: DraftReportType) {
   if (type === "cfr") return "bg-purple-100 text-purple-800";
   if (type === "service_report") return "bg-yellow-100 text-yellow-800";
   if (type === "daily") return "bg-emerald-100 text-emerald-800";
+  if (type === "health_check") return "bg-cyan-100 text-cyan-800";
   return "bg-blue-100 text-blue-800";
 }
 
@@ -44,12 +50,20 @@ function sourceReportTypePath(type: DraftReportType) {
     return "preventive";
   }
 
+  if (type === "health_check") {
+    return "health-check";
+  }
+
   return type === "service_report" ? "service-report" : type;
 }
 
 function aiGenerationRoutePath(type: DraftReportType) {
   if (type === "machine_maintenance") {
     return "machine-maintenance";
+  }
+
+  if (type === "health_check") {
+    return "health-check";
   }
 
   return type === "service_report" ? "service-report" : type;
@@ -175,6 +189,23 @@ export function AiGenerationPage() {
         return;
       }
 
+      if (draft.type === "health_check") {
+        const [sourceReport, aiReport] = await Promise.all([
+          getSourceReport<SourceHealthCheckReport>("health_check", draft.id),
+          generateAiReport("health_check", draft.id) as Promise<AiHealthCheckReport>,
+        ]);
+
+        navigate(`/ai-generation-service/${aiGenerationRoutePath(draft.type)}/${draft.id}`, {
+          state: {
+            reportType: "health_check",
+            sourceReport,
+            aiReport,
+          },
+        });
+
+        return;
+      }
+
       if (draft.type === "cfr") {
         const [sourceReport, aiReport] = await Promise.all([
           getSourceReport<SourceCfrReport>("cfr", draft.id),
@@ -290,6 +321,7 @@ export function AiGenerationPage() {
             >
               <option value="all">All report types</option>
               <option value="machine_maintenance">Machine Maintenance</option>
+              <option value="health_check">Health Check</option>
               <option value="service_report">Service</option>
               <option value="daily">Daily</option>
               <option value="cfr">CFR</option>

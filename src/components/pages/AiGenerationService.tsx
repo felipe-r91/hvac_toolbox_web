@@ -15,6 +15,10 @@ import MachineMaintenanceReportUI, {
   type AiMachineMaintenanceReport,
   type SourceMachineMaintenanceReport,
 } from "./MachineMaintenanceReportUI";
+import HealthCheckReportUI, {
+  type AiHealthCheckReport,
+  type SourceHealthCheckReport,
+} from "./HealthCheckReportUI";
 
 type AiGenerationLocationState =
   | {
@@ -36,6 +40,11 @@ type AiGenerationLocationState =
       reportType: "machine_maintenance";
       sourceReport: SourceMachineMaintenanceReport;
       aiReport: AiMachineMaintenanceReport;
+    }
+  | {
+      reportType: "health_check";
+      sourceReport: SourceHealthCheckReport;
+      aiReport: AiHealthCheckReport;
     };
 
 export function AiGenerationService() {
@@ -100,6 +109,17 @@ export function AiGenerationService() {
     return (
       <div className="h-[calc(100vh-96px)] overflow-y-auto overflow-x-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">
         <MachineMaintenanceReportUI
+          aiReport={state.aiReport}
+          sourceReport={state.sourceReport}
+        />
+      </div>
+    );
+  }
+
+  if (reportType === "health-check" && state.reportType === "health_check") {
+    return (
+      <div className="h-[calc(100vh-96px)] overflow-y-auto overflow-x-hidden rounded-3xl bg-slate-100 ring-1 ring-slate-200">
+        <HealthCheckReportUI
           aiReport={state.aiReport}
           sourceReport={state.sourceReport}
         />

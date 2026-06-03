@@ -15,6 +15,10 @@ function reportTypeClasses(type?: CustomerReportType) {
     return "bg-blue-100 text-blue-800";
   }
 
+  if (type === "health_check") {
+    return "bg-cyan-100 text-cyan-800";
+  }
+
   if (type === "service_report") {
     return "bg-yellow-100 text-yellow-800";
   }
@@ -32,6 +36,7 @@ function reportTypeClasses(type?: CustomerReportType) {
 
 function reportTypeLabel(type?: CustomerReportType) {
   if (type === "machine_maintenance") return "Machine Maintenance";
+  if (type === "health_check") return "Health Check";
   if (type === "service_report") return "Service";
   if (type === "cfr") return "CFR";
   if (type === "daily" || type === "daily_report") return "Daily";
@@ -193,6 +198,7 @@ export function ReportsPage() {
             >
               <option value="all">All report types</option>
               <option value="machine_maintenance">Machine Maintenance</option>
+              <option value="health_check">Health Check</option>
               <option value="service_report">Service</option>
               <option value="daily_report">Daily</option>
               <option value="cfr">CFR</option>

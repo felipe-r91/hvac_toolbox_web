@@ -5,6 +5,7 @@ export type CreateCustomerReportPayload = {
   sourceReportType:
     | "cfr"
     | "machine_maintenance"
+    | "health_check"
     | "service_report"
     | "daily"
     | "daily_report";
@@ -29,6 +30,7 @@ export type CustomerReportResponse = {
     | "cfr"
     | "service_report"
     | "machine_maintenance"
+    | "health_check"
     | "daily"
     | "daily_report";
   vesselId?: string;

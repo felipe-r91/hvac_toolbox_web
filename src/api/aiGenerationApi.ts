@@ -4,6 +4,7 @@ export type DraftReportType =
   | "cfr"
   | "service_report"
   | "machine_maintenance"
+  | "health_check"
   | "daily";
 
 export type CfrDraftSummaryResponse = {
@@ -46,6 +47,8 @@ export type MachineMaintenanceReportSummaryResponse = {
   faultCount: number;
   skippedCount: number;
 };
+
+export type HealthCheckReportSummaryResponse = MachineMaintenanceReportSummaryResponse;
 
 export type DailyDraftSummaryResponse = {
   id: string;
@@ -170,6 +173,8 @@ export type AiMachineMaintenanceReportResponse = {
   ehsStatement: string;
 };
 
+export type AiHealthCheckReportResponse = AiMachineMaintenanceReportResponse;
+
 export type ServiceAlarmItem = {
   description: string;
   status: string;
@@ -196,7 +201,8 @@ export type AiGeneratedReportResponse =
   | AiCustomerReportResponse
   | AiServiceReportResponse
   | AiDailyReportResponse
-  | AiMachineMaintenanceReportResponse;
+  | AiMachineMaintenanceReportResponse
+  | AiHealthCheckReportResponse;
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -260,15 +266,28 @@ export async function getMachineMaintenanceReports(): Promise<
   return request<MachineMaintenanceReportSummaryResponse[]>("/api/reports/preventive");
 }
 
+export async function getHealthCheckReports(): Promise<
+  HealthCheckReportSummaryResponse[]
+> {
+  return request<HealthCheckReportSummaryResponse[]>("/api/reports/health-check");
+}
+
 export async function getDailyDrafts(): Promise<DailyDraftSummaryResponse[]> {
   return request<DailyDraftSummaryResponse[]>("/api/reports/daily");
 }
 
 export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
-  const [cfrDrafts, serviceReportDrafts, machineMaintenanceReports, dailyDrafts] = await Promise.all([
+  const [
+    cfrDrafts,
+    serviceReportDrafts,
+    machineMaintenanceReports,
+    healthCheckReports,
+    dailyDrafts,
+  ] = await Promise.all([
     getCfrDrafts(),
     getServiceReportDrafts(),
     getMachineMaintenanceReports(),
+    getHealthCheckReports(),
     getDailyDrafts(),
   ]);
 
@@ -305,6 +324,17 @@ export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
     reportCategory: "machine_maintenance",
   }));
 
+  const healthCheckRows: DraftReportRow[] = healthCheckReports.map((report) => ({
+    id: report.id,
+    vessel: safeValue(report.vesselName),
+    machine: machineLabel(report.machineTag, report.machineModel),
+    machineLocation: safeValue(report.machineLocation),
+    type: "health_check",
+    date: report.completedAt,
+    status: safeValue(report.overallStatus),
+    reportCategory: "health_check",
+  }));
+
   const dailyRows: DraftReportRow[] = dailyDrafts.map((draft) => ({
     id: draft.id,
     vessel: safeValue(draft.vesselName),
@@ -316,12 +346,22 @@ export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
     reportCategory: draft.reportCategory || "daily",
   }));
 
-  return [...cfrRows, ...serviceReportRows, ...machineMaintenanceRows, ...dailyRows].sort(sortByNewestDate);
+  return [
+    ...cfrRows,
+    ...serviceReportRows,
+    ...machineMaintenanceRows,
+    ...healthCheckRows,
+    ...dailyRows,
+  ].sort(sortByNewestDate);
 }
 
 function apiReportTypePath(type: DraftReportType) {
   if (type === "machine_maintenance") {
     return "machine-maintenance";
+  }
+
+  if (type === "health_check") {
+    return "health-check";
   }
 
   return type === "service_report" ? "service-report" : type;
@@ -377,6 +417,17 @@ export async function generateMachineMaintenanceAiReport(
 ): Promise<AiMachineMaintenanceReportResponse> {
   return request<AiMachineMaintenanceReportResponse>(
     `/api/ai-reports/machine-maintenance/${draftId}/generate`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function generateHealthCheckAiReport(
+  draftId: string
+): Promise<AiHealthCheckReportResponse> {
+  return request<AiHealthCheckReportResponse>(
+    `/api/ai-reports/health-check/${draftId}/generate`,
     {
       method: "POST",
     }

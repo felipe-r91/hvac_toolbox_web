@@ -20,6 +20,10 @@ function reportTypeClasses(type?: OfficeReportCategory) {
     return "bg-blue-100 text-blue-800";
   }
 
+  if (type === "health_check") {
+    return "bg-cyan-100 text-cyan-800";
+  }
+
   if (type === "service_report") {
     return "bg-yellow-100 text-yellow-800";
   }
@@ -37,6 +41,7 @@ function reportTypeClasses(type?: OfficeReportCategory) {
 
 function reportTypeLabel(type?: OfficeReportCategory) {
   if (type === "machine_maintenance") return "Machine Maintenance";
+  if (type === "health_check") return "Health Check";
   if (type === "service_report") return "Service";
   if (type === "cfr") return "CFR";
   if (type === "daily") return "Daily";
@@ -186,6 +191,7 @@ export function MachinesPage() {
             >
               <option value="all">All report types</option>
               <option value="machine_maintenance">Machine Maintenance</option>
+              <option value="health_check">Health Check</option>
               <option value="service_report">Service</option>
               <option value="daily">Daily</option>
               <option value="cfr">CFR</option>

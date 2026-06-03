@@ -4,7 +4,7 @@ import { API_BASE_URL } from "./config";
 
 export type MachineTimelineItem = {
   id: string;
-  type: "machine_maintenance" | "service_report" | "cfr" | "daily";
+  type: "machine_maintenance" | "health_check" | "service_report" | "cfr" | "daily";
   reportCategory: OfficeReportCategory;
   date: string;
   status: "online" | "down" | "unknown";
@@ -38,6 +38,19 @@ export async function getMachineTimeline(
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Failed to load timeline for machine ${machineId}: ${text}`);
+  }
+
+  return response.json();
+}
+
+export async function getMachineHealthCheckReports(
+  machineId: string
+): Promise<MachineTimelineItem[]> {
+  const response = await fetch(`${API_BASE_URL}/api/fleet/machines/${machineId}/health-check`);
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to load health check reports for machine ${machineId}: ${text}`);
   }
 
   return response.json();

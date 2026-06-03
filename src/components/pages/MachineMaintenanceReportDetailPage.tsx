@@ -1,9 +1,81 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getMachineMaintenanceReportById } from "../../api/reportDetailApi";
-import type { MachineMaintenanceReportDetail } from "../../types/report";
+import {
+  getHealthCheckReportById,
+  getMachineMaintenanceReportById,
+} from "../../api/reportDetailApi";
+import type {
+  HealthCheckReportDetail,
+  MachineMaintenanceReportDetail,
+} from "../../types/report";
 import { API_BASE_URL } from "../../api/config";
 import { VscSparkle } from "react-icons/vsc";
+
+type MaintenanceLikeReportDetail =
+  | MachineMaintenanceReportDetail
+  | HealthCheckReportDetail;
+
+type MaintenanceLikeReportConfig = {
+  title: string;
+  badgeLabel: string;
+  badgeClassName: string;
+  loadingText: string;
+  notFoundText: string;
+  failedLoadText: string;
+  aiPreparingText: string;
+  aiSteps: string[];
+  aiEndpointPath: string;
+  aiReceivingText: string;
+  aiSuccessText: string;
+  aiRoutePath: string;
+  aiReportType: "machine_maintenance" | "health_check";
+};
+
+const machineMaintenanceReportConfig: MaintenanceLikeReportConfig = {
+  title: "Machine Maintenance Report",
+  badgeLabel: "Machine Maintenance",
+  badgeClassName: "bg-blue-100 text-blue-800",
+  loadingText: "Loading machine maintenance report...",
+  notFoundText: "Machine maintenance report not found.",
+  failedLoadText: "Failed to load machine maintenance report.",
+  aiPreparingText: "Preparing maintenance report data...",
+  aiSteps: [
+    "Reading maintenance tasks...",
+    "Reviewing task notes and measured values...",
+    "Checking alarm and fault items...",
+    "Building maintenance activity summary...",
+    "Generating customer-ready maintenance report...",
+    "Formatting maintenance report sections...",
+  ],
+  aiEndpointPath: "machine-maintenance",
+  aiReceivingText: "Receiving generated maintenance report...",
+  aiSuccessText: "Machine maintenance report generated successfully.",
+  aiRoutePath: "machine-maintenance",
+  aiReportType: "machine_maintenance",
+};
+
+const healthCheckReportConfig: MaintenanceLikeReportConfig = {
+  title: "Health Check Report",
+  badgeLabel: "Health Check",
+  badgeClassName: "bg-cyan-100 text-cyan-800",
+  loadingText: "Loading health check report...",
+  notFoundText: "Health check report not found.",
+  failedLoadText: "Failed to load health check report.",
+  aiPreparingText: "Preparing health check report data...",
+  aiSteps: [
+    "Reading health check tasks...",
+    "Reviewing health notes and measured values...",
+    "Checking alarms and abnormal findings...",
+    "Building health check activity summary...",
+    "Generating customer-ready health check report...",
+    "Formatting health check report sections...",
+  ],
+  aiEndpointPath: "health-check",
+  aiReceivingText: "Receiving generated health check report...",
+  aiSuccessText: "Health check report generated successfully.",
+  aiRoutePath: "health-check",
+  aiReportType: "health_check",
+};
 
 function resolvePhotoUrl(url?: string) {
   if (!url) return "";
@@ -119,10 +191,34 @@ function AiGenerationProgress({
 }
 
 export function MachineMaintenanceReportDetailPage() {
+  return (
+    <MaintenanceLikeReportDetailPage
+      config={machineMaintenanceReportConfig}
+      loadReport={getMachineMaintenanceReportById}
+    />
+  );
+}
+
+export function HealthCheckReportDetailPage() {
+  return (
+    <MaintenanceLikeReportDetailPage
+      config={healthCheckReportConfig}
+      loadReport={getHealthCheckReportById}
+    />
+  );
+}
+
+function MaintenanceLikeReportDetailPage({
+  config,
+  loadReport,
+}: {
+  config: MaintenanceLikeReportConfig;
+  loadReport: (id: string) => Promise<MaintenanceLikeReportDetail>;
+}) {
   const { reportId } = useParams();
   const navigate = useNavigate();
 
-  const [report, setReport] = useState<MachineMaintenanceReportDetail | null>(null);
+  const [report, setReport] = useState<MaintenanceLikeReportDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -136,32 +232,28 @@ export function MachineMaintenanceReportDetailPage() {
       try {
         setLoading(true);
         setError("");
-        setReport(await getMachineMaintenanceReportById(reportId));
+        setReport(await loadReport(reportId));
       } catch (err) {
         console.error(err);
-        setError("Failed to load machine maintenance report.");
+        setError(config.failedLoadText);
       } finally {
         setLoading(false);
       }
     };
 
     run();
-  }, [reportId]);
+  }, [config.failedLoadText, loadReport, reportId]);
 
   useEffect(() => {
     if (!aiLoading) return;
 
     setAiProgress(8);
-    setAiStep("Preparing maintenance report data...");
+    setAiStep(config.aiPreparingText);
 
-    const steps = [
-      { progress: 18, text: "Reading maintenance tasks..." },
-      { progress: 34, text: "Reviewing task notes and measured values..." },
-      { progress: 50, text: "Checking alarm and fault items..." },
-      { progress: 66, text: "Building maintenance activity summary..." },
-      { progress: 82, text: "Generating customer-ready maintenance report..." },
-      { progress: 92, text: "Formatting maintenance report sections..." },
-    ];
+    const steps = config.aiSteps.map((text, index) => ({
+      progress: [18, 34, 50, 66, 82, 92][index] || 92,
+      text,
+    }));
 
     let index = 0;
 
@@ -179,11 +271,11 @@ export function MachineMaintenanceReportDetailPage() {
     }, 1100);
 
     return () => window.clearInterval(interval);
-  }, [aiLoading]);
+  }, [aiLoading, config.aiPreparingText, config.aiSteps]);
 
-  if (loading) return <CardText text="Loading machine maintenance report..." />;
+  if (loading) return <CardText text={config.loadingText} />;
   if (error || !report) {
-    return <CardText text={error || "Machine maintenance report not found."} error />;
+    return <CardText text={error || config.notFoundText} error />;
   }
 
   const headerPhoto = report.machinePhotoPreviewUrl || "";
@@ -197,7 +289,7 @@ export function MachineMaintenanceReportDetailPage() {
       setAiStep("Starting AI generation...");
 
       const response = await fetch(
-        `${API_BASE_URL}/api/ai-reports/machine-maintenance/${report.id}/generate`,
+        `${API_BASE_URL}/api/ai-reports/${config.aiEndpointPath}/${report.id}/generate`,
         {
           method: "POST",
         }
@@ -208,17 +300,17 @@ export function MachineMaintenanceReportDetailPage() {
       }
 
       setAiProgress(96);
-      setAiStep("Receiving generated maintenance report...");
+      setAiStep(config.aiReceivingText);
 
       const aiReport = await response.json();
 
       setAiProgress(100);
-      setAiStep("Machine maintenance report generated successfully.");
+      setAiStep(config.aiSuccessText);
 
       window.setTimeout(() => {
-        navigate(`/ai-generation-service/machine-maintenance/${report.id}`, {
+        navigate(`/ai-generation-service/${config.aiRoutePath}/${report.id}`, {
           state: {
-            reportType: "machine_maintenance",
+            reportType: config.aiReportType,
             sourceReport: report,
             aiReport,
           },
@@ -244,7 +336,7 @@ export function MachineMaintenanceReportDetailPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-semibold text-slate-900">
-                  Machine Maintenance Report
+                  {config.title}
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
                   {new Date(report.completedAt).toLocaleString()}
@@ -252,8 +344,8 @@ export function MachineMaintenanceReportDetailPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
-                  Machine Maintenance
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${config.badgeClassName}`}>
+                  {config.badgeLabel}
                 </span>
 
                 <span

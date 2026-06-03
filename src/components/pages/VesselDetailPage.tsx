@@ -22,6 +22,10 @@ function reportTypeClasses(type?: OfficeReportCategory) {
     return "bg-blue-100 text-blue-800";
   }
 
+  if (type === "health_check") {
+    return "bg-cyan-100 text-cyan-800";
+  }
+
   if (type === "service_report") {
     return "bg-yellow-100 text-yellow-800";
   }
@@ -40,6 +44,10 @@ function reportTypeClasses(type?: OfficeReportCategory) {
 function formatRepportType(type?: OfficeReportCategory) {
   if (type === "machine_maintenance") {
     return "Machine Maintenance";
+  }
+
+  if (type === "health_check") {
+    return "Health Check";
   }
 
   if (type === "service_report") {

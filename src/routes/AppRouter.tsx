@@ -10,7 +10,10 @@ import { MachineDetailPage } from "../components/pages/MachineDetailPage";
 import { VesselDetailPage } from "../components/pages/VesselDetailPage";
 import { CfrReportDetailPage } from "../components/pages/CfrReportDetailPage";
 import { ServiceReportDetailPage } from "../components/pages/ServiceReportDetailPage";
-import { MachineMaintenanceReportDetailPage } from "../components/pages/MachineMaintenanceReportDetailPage";
+import {
+  HealthCheckReportDetailPage,
+  MachineMaintenanceReportDetailPage,
+} from "../components/pages/MachineMaintenanceReportDetailPage";
 import { AiGenerationPage } from "../components/pages/AiGenerationPage";
 import { DailyReportDetailPage } from "../components/pages/DailyReportDetailPage";
 
@@ -30,6 +33,7 @@ export function AppRouter() {
           <Route path="/machines/:machineId" element={<MachineDetailPage />} />
           <Route path="/vessels/:vesselId" element={<VesselDetailPage />} />
           <Route path="/machine-maintenance-reports/:reportId" element={<MachineMaintenanceReportDetailPage />} />
+          <Route path="/health-check-reports/:reportId" element={<HealthCheckReportDetailPage />} />
           <Route path="/service-report/:reportId" element={<ServiceReportDetailPage />} />
           <Route path="/cfr-reports/:reportId" element={<CfrReportDetailPage />} />
           <Route path="/daily-reports/:reportId" element={<DailyReportDetailPage />} />

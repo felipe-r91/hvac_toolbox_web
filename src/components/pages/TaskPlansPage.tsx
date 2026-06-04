@@ -391,7 +391,7 @@ export function TaskPlansPage() {
   };
 
   return (
-    <section className="flex min-h-0 flex-col gap-4">
+    <section className="flex h-[calc(100vh-8.5rem)] min-h-0 flex-col gap-4">
       <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex rounded-2xl bg-slate-100 p-1">
@@ -445,7 +445,7 @@ export function TaskPlansPage() {
         ) : null}
       </section>
 
-      <section className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
         <div className="relative shrink-0 px-4 py-3">
           {loading ? (
             <p className="px-2 py-2 text-sm text-slate-500">Loading task plans...</p>
@@ -529,7 +529,7 @@ export function TaskPlansPage() {
         </div>
 
         {draft ? (
-          <div className="flex min-h-0 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col">
               <div className="border-b border-slate-200 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -614,20 +614,9 @@ export function TaskPlansPage() {
                 </div>
               </div>
 
-              <div className="max-h-[42vh] overflow-y-auto">
-                <table className="w-full table-fixed border-collapse">
-                  <colgroup>
-                    <col className="w-[11%]" />
-                    <col className="w-[11%]" />
-                    <col className="w-[24%]" />
-                    <col className="w-[10%]" />
-                    <col className="w-[7%]" />
-                    <col className="w-[8%]" />
-                    <col className="w-[8%]" />
-                    <col className="w-[8%]" />
-                    <col className="w-[9%]" />
-                    <col className="w-[4%]" />
-                  </colgroup>
+              <section className="min-h-0 flex-1 overflow-hidden">
+                <div className="h-full overflow-auto">
+                  <table className="min-w-full border-collapse">
                   <thead className="sticky top-0 z-10 bg-slate-50">
                     <tr className="text-left">
                       <th className="px-3 py-3 text-sm font-semibold text-slate-700">
@@ -760,8 +749,9 @@ export function TaskPlansPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
+                  </table>
+                </div>
+              </section>
               </div>
         ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center">

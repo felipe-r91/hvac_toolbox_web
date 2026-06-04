@@ -530,7 +530,7 @@ export function TaskPlansPage() {
 
         {draft ? (
           <div className="flex min-h-0 flex-1 flex-col">
-              <div className="border-b border-slate-200 px-5 py-1">
+              <div className="border-b border-slate-200 px-5 pt-1 pb-2">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h1 className="text-xl font-semibold text-slate-900">

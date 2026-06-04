@@ -3,6 +3,19 @@ import { Link } from "react-router-dom";
 import { getVessels } from "../../api/vesselsApi";
 import type { OfficeVessel } from "../../types/vessel";
 
+function DetailField({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-medium text-slate-700">
+        {value || "-"}
+      </p>
+    </div>
+  );
+}
+
 export function VesselsPage() {
   const [vessels, setVessels] = useState<OfficeVessel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +62,7 @@ export function VesselsPage() {
         {vessels.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 p-4">
             {vessels.map((vessel) => {
-              const totalMachines = vessel.machines.length;
+              const totalMachines = vessel.machines?.length ?? 0;
 
               return (
                 <Link
@@ -64,7 +77,7 @@ export function VesselsPage() {
                       </h2>
 
                       <p className="mt-1 text-sm text-slate-500">
-                        IMO: {vessel.imoNumber}
+                        {vessel.vesselType || "Unknown vessel type"}
                       </p>
                     </div>
 
@@ -73,9 +86,20 @@ export function VesselsPage() {
                     </div>
                   </div>
 
-                  <p className="mt-4 line-clamp-3 text-sm text-slate-600">
-                    {vessel.description || "No description available."}
-                  </p>
+                  <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <DetailField label="ID" value={vessel.id} />
+                    <DetailField label="IMO Number" value={vessel.imoNumber} />
+                    <DetailField label="Vessel IMO" value={vessel.vesselImo} />
+                    <DetailField label="Vessel Type" value={vessel.vesselType} />
+                    <DetailField
+                      label="Owner / Customer"
+                      value={vessel.ownerCustomer}
+                    />
+                    <DetailField
+                      label="Vessel Contact"
+                      value={vessel.vesselContact}
+                    />
+                  </div>
                 </Link>
               );
             })}

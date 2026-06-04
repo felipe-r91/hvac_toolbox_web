@@ -87,7 +87,6 @@ export function VesselsPage() {
                   </div>
 
                   <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <DetailField label="ID" value={vessel.id} />
                     <DetailField label="IMO Number" value={vessel.imoNumber} />
                     <DetailField label="Vessel IMO" value={vessel.vesselImo} />
                     <DetailField label="Vessel Type" value={vessel.vesselType} />

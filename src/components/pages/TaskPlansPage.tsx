@@ -58,6 +58,8 @@ const kindLabels: Record<TaskPlanKind, string> = {
 const taskGridColumns =
   "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2.1fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_3rem]";
 
+const taskRowHeightPx = 84;
+
 const emptyTask = (): DraftTask => ({
   id: "",
   category: "",
@@ -662,7 +664,14 @@ export function TaskPlansPage() {
                     </div>
                   </div>
 
-                  <div className="max-h-[42vh] overflow-y-auto">
+                  <div
+                    className="overflow-y-auto"
+                    style={{
+                      height: `min(42vh, ${
+                        Math.max(draft.tasks.length, 1) * taskRowHeightPx
+                      }px)`,
+                    }}
+                  >
                     {draft.tasks.map((task, index) => (
                       <div
                         key={index}

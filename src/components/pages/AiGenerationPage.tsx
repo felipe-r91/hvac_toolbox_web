@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { FaMagic, FaSpinner } from "react-icons/fa";
+import { FaFileAlt, FaMagic, FaSpinner } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../api/config";
 import {
+  createServiceReportFromDailyReports,
   type DraftReportRow,
   type DraftReportType,
   generateAiReport,
@@ -99,6 +100,11 @@ export function AiGenerationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [selectedDailyReportIds, setSelectedDailyReportIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [creatingServiceReport, setCreatingServiceReport] = useState(false);
+  const [selectionError, setSelectionError] = useState("");
 
   const [search, setSearch] = useState("");
   const [vesselFilter, setVesselFilter] = useState("all");
@@ -166,6 +172,87 @@ export function AiGenerationPage() {
       return matchesSearch && matchesVessel && matchesReportType;
     });
   }, [drafts, search, vesselFilter, reportTypeFilter]);
+
+  const selectedDailyReports = useMemo(
+    () =>
+      drafts.filter(
+        (draft) =>
+          draft.type === "daily" && selectedDailyReportIds.has(draft.id)
+      ),
+    [drafts, selectedDailyReportIds]
+  );
+
+  const selectedMachineKey = selectedDailyReports[0]?.machineKey;
+  const selectedMachineLabel = selectedDailyReports[0]?.machine;
+  const hasMixedMachineSelection = selectedDailyReports.some(
+    (draft) => draft.machineKey !== selectedMachineKey
+  );
+
+  function toggleDailyReportSelection(draft: DraftReportRow) {
+    const isSelected = selectedDailyReportIds.has(draft.id);
+
+    if (
+      !isSelected &&
+      selectedMachineKey &&
+      draft.machineKey !== selectedMachineKey
+    ) {
+      setSelectionError(
+        "Select Daily Reports from the same machine. Clear the current selection to choose another machine."
+      );
+      return;
+    }
+
+    setSelectionError("");
+    setSelectedDailyReportIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(draft.id)) {
+        next.delete(draft.id);
+      } else {
+        next.add(draft.id);
+      }
+
+      return next;
+    });
+  }
+
+  async function handleCreateServiceReport() {
+    if (
+      selectedDailyReportIds.size < 2 ||
+      hasMixedMachineSelection ||
+      creatingServiceReport
+    ) {
+      if (hasMixedMachineSelection) {
+        setSelectionError(
+          "A Service Report can only be created from Daily Reports for one machine."
+        );
+      }
+      return;
+    }
+
+    try {
+      setCreatingServiceReport(true);
+      setError("");
+
+      const { sourceReport, aiReport } =
+        await createServiceReportFromDailyReports(
+          Array.from(selectedDailyReportIds)
+        );
+
+      navigate(`/ai-generation-service/service-report/${sourceReport.id}`, {
+        state: {
+          reportType: "service_report",
+          sourceReport: sourceReport as SourceServiceReport,
+          aiReport: aiReport as AiServiceReport,
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to create a Service Report from the selected Daily Reports.");
+    } finally {
+      setCreatingServiceReport(false);
+    }
+  }
 
   async function handleGenerate(draft: DraftReportRow) {
     try {
@@ -329,27 +416,77 @@ export function AiGenerationPage() {
           </label>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">
-            Showing {filteredDrafts.length} draft{filteredDrafts.length === 1 ? "" : "s"}
-          </p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-slate-500">
+              Showing {filteredDrafts.length} draft{filteredDrafts.length === 1 ? "" : "s"}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              {selectedMachineLabel
+                ? `Selected machine: ${selectedMachineLabel}. Choose at least 2 Daily Reports.`
+                : "Select at least 2 Daily Reports from the same machine to create a Service Report."}
+            </p>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setSearch("");
-              setVesselFilter("all");
-              setReportTypeFilter("all");
-            }}
-            className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
-          >
-            Clear filters
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleCreateServiceReport}
+              disabled={
+                selectedDailyReportIds.size < 2 ||
+                hasMixedMachineSelection ||
+                creatingServiceReport ||
+                generatingId !== null
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {creatingServiceReport ? (
+                <FaSpinner className="animate-spin" />
+              ) : (
+                <FaFileAlt />
+              )}
+              {creatingServiceReport
+                ? "Creating Service Report..."
+                : `Create Service Report (${selectedDailyReportIds.size})`}
+            </button>
+
+            {selectedDailyReportIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDailyReportIds(new Set());
+                  setSelectionError("");
+                }}
+                disabled={creatingServiceReport}
+                className="rounded-2xl bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Clear selection
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setVesselFilter("all");
+                setReportTypeFilter("all");
+              }}
+              className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
+            >
+              Clear filters
+            </button>
+          </div>
         </div>
 
         {error && (
           <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {selectionError && (
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {selectionError}
           </div>
         )}
       </section>
@@ -359,6 +496,9 @@ export function AiGenerationPage() {
           <table className="min-w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-slate-50">
               <tr className="text-left">
+                <th className="w-16 px-6 py-4 text-center text-sm font-semibold text-slate-700">
+                  Select
+                </th>
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">
                   Vessel
                 </th>
@@ -381,12 +521,44 @@ export function AiGenerationPage() {
               {filteredDrafts.length > 0 ? (
                 filteredDrafts.map((draft) => {
                   const isGenerating = generatingId === draft.id;
+                  const isSelected = selectedDailyReportIds.has(draft.id);
+                  const isDifferentMachine =
+                    draft.type === "daily" &&
+                    Boolean(selectedMachineKey) &&
+                    draft.machineKey !== selectedMachineKey;
 
                   return (
                     <tr
                       key={`${draft.type}-${draft.id}`}
-                      className="border-t border-slate-200 hover:bg-slate-50"
+                      className={`border-t border-slate-200 hover:bg-slate-50 ${
+                        selectedDailyReportIds.has(draft.id) ? "bg-emerald-50/60" : ""
+                      }`}
                     >
+                      <td className="px-6 py-4 text-center">
+                        {draft.type === "daily" ? (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleDailyReportSelection(draft)}
+                            disabled={
+                              creatingServiceReport ||
+                              (isDifferentMachine && !isSelected)
+                            }
+                            title={
+                              isDifferentMachine
+                                ? "This Daily Report belongs to a different machine."
+                                : undefined
+                            }
+                            aria-label={`Select Daily Report from ${formatDate(
+                              draft.date
+                            )} for ${draft.machine}`}
+                            className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                          />
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
+
                       <td className="px-6 py-4 text-sm text-slate-700">
                         {draft.vessel || "—"}
                       </td>
@@ -419,7 +591,11 @@ export function AiGenerationPage() {
                         <button
                           type="button"
                           onClick={() => handleGenerate(draft)}
-                          disabled={isGenerating}
+                          disabled={
+                            isGenerating ||
+                            creatingServiceReport ||
+                            (generatingId !== null && !isGenerating)
+                          }
                           className="inline-flex w-fit items-center justify-center gap-2 rounded-2xl bg-white px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isGenerating ? (
@@ -438,7 +614,7 @@ export function AiGenerationPage() {
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-6 py-10 text-center text-sm text-slate-500"
                   >
                     No draft reports found for the current filters.

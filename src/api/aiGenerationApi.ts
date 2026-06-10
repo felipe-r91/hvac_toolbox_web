@@ -52,6 +52,7 @@ export type HealthCheckReportSummaryResponse = MachineMaintenanceReportSummaryRe
 
 export type DailyDraftSummaryResponse = {
   id: string;
+  machineId?: string;
   vesselName: string;
   machineTag: string;
   machineModel: string;
@@ -69,6 +70,7 @@ export type DraftReportRow = {
   id: string;
   vessel: string;
   machine: string;
+  machineKey?: string;
   machineLocation: string;
   type: DraftReportType;
   date: string;
@@ -204,6 +206,14 @@ export type AiGeneratedReportResponse =
   | AiMachineMaintenanceReportResponse
   | AiHealthCheckReportResponse;
 
+export type ServiceReportFromDailyReportsResponse = {
+  sourceReport: {
+    id: string;
+    [key: string]: unknown;
+  };
+  aiReport: AiServiceReportResponse;
+};
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
@@ -229,6 +239,21 @@ function machineLabel(machineTag?: string, machineModel?: string): string {
 
 function safeValue(value?: string): string {
   return value?.trim() || "Not informed";
+}
+
+function dailyReportMachineKey(draft: DailyDraftSummaryResponse): string {
+  if (draft.machineId?.trim()) {
+    return draft.machineId.trim();
+  }
+
+  return [
+    draft.vesselName,
+    draft.machineTag,
+    draft.machineModel,
+    draft.machineLocation,
+  ]
+    .map((value) => safeValue(value).toLowerCase())
+    .join("|");
 }
 
 function sortByNewestDate(a: DraftReportRow, b: DraftReportRow): number {
@@ -339,6 +364,7 @@ export async function getAiGenerationDrafts(): Promise<DraftReportRow[]> {
     id: draft.id,
     vessel: safeValue(draft.vesselName),
     machine: machineLabel(draft.machineTag, draft.machineModel),
+    machineKey: dailyReportMachineKey(draft),
     machineLocation: safeValue(draft.machineLocation),
     type: "daily",
     date: draft.createdAt,
@@ -375,6 +401,18 @@ export async function generateAiReport(
     `/api/ai-reports/${apiReportTypePath(type)}/${id}/generate`,
     {
       method: "POST",
+    }
+  );
+}
+
+export async function createServiceReportFromDailyReports(
+  dailyReportIds: string[]
+): Promise<ServiceReportFromDailyReportsResponse> {
+  return request<ServiceReportFromDailyReportsResponse>(
+    "/api/ai-reports/service-report/from-daily-reports/generate",
+    {
+      method: "POST",
+      body: JSON.stringify({ dailyReportIds }),
     }
   );
 }

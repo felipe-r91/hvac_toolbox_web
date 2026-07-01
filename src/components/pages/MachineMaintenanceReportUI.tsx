@@ -301,17 +301,18 @@ function statusLabel(value?: string) {
 
 function isImageReference(value?: string) {
   if (!value) return false;
+  const trimmedValue = value.trim();
+
   return (
-    value.startsWith("http://") ||
-    value.startsWith("https://") ||
-    value.startsWith("data:") ||
-    value.startsWith("blob:") ||
-    value.startsWith("/") ||
-    value.startsWith("api/") ||
-    value.startsWith("uploads/") ||
-    value.startsWith("files/") ||
-    value.startsWith("photos/") ||
-    /\.(png|jpe?g|webp|gif)$/i.test(value)
+    trimmedValue.startsWith("http://") ||
+    trimmedValue.startsWith("https://") ||
+    trimmedValue.startsWith("data:") ||
+    trimmedValue.startsWith("blob:") ||
+    trimmedValue.startsWith("/") ||
+    trimmedValue.startsWith("api/") ||
+    trimmedValue.startsWith("uploads/") ||
+    trimmedValue.startsWith("files/") ||
+    trimmedValue.startsWith("photos/")
   );
 }
 
@@ -820,6 +821,29 @@ function normalizeMatchValue(value?: string) {
   return (value || "").trim().toLowerCase();
 }
 
+function stripFileExtension(value: string) {
+  return value.replace(/\.(png|jpe?g|webp|gif)$/i, "");
+}
+
+function valuesMatch(left?: string, right?: string) {
+  const normalizedLeft = normalizeMatchValue(left);
+  const normalizedRight = normalizeMatchValue(right);
+
+  if (!normalizedLeft || !normalizedRight) return false;
+
+  const leftWithoutExtension = stripFileExtension(normalizedLeft);
+  const rightWithoutExtension = stripFileExtension(normalizedRight);
+
+  return (
+    normalizedLeft === normalizedRight ||
+    normalizedLeft.includes(normalizedRight) ||
+    normalizedRight.includes(normalizedLeft) ||
+    leftWithoutExtension === rightWithoutExtension ||
+    leftWithoutExtension.includes(rightWithoutExtension) ||
+    rightWithoutExtension.includes(leftWithoutExtension)
+  );
+}
+
 function getTaskPhotoReferences(task?: SourceMaintenanceTask) {
   if (!task) return [];
 
@@ -868,8 +892,6 @@ function findSourceTaskForActivity(
   if (!sourceTasks?.length) return undefined;
 
   const activityTask = normalizeMatchValue(activity.task);
-  const activityCategory = normalizeMatchValue(activity.category);
-
   return sourceTasks.find((task) => {
     const taskLabels = [
       task.taskName,
@@ -880,16 +902,10 @@ function findSourceTaskForActivity(
       .map(normalizeMatchValue)
       .filter(Boolean);
 
-    const taskMatches =
+    return (
       Boolean(activityTask) &&
-      taskLabels.some(
-        (label) => label === activityTask || label.includes(activityTask) || activityTask.includes(label)
-      );
-
-    if (!taskMatches) return false;
-    if (!activityCategory) return true;
-
-    return normalizeMatchValue(task.category) === activityCategory;
+      taskLabels.some((label) => valuesMatch(label, activityTask))
+    );
   });
 }
 
@@ -950,10 +966,7 @@ function matchPhotoReference(
   const term = reference.toLowerCase();
 
   return getAllSourcePhotos(sourceReport).find((photo) => {
-    return getPhotoCandidateValues(photo).some((value) => {
-      const normalizedValue = value.toLowerCase();
-      return term.includes(normalizedValue) || normalizedValue.includes(term);
-    });
+    return getPhotoCandidateValues(photo).some((value) => valuesMatch(value, term));
   });
 }
 

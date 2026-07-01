@@ -794,16 +794,6 @@ function getPhotoPreviewUrl(photo?: SourceMaintenancePhoto) {
   );
 }
 
-function getPhotoReferenceLabel(photo?: SourceMaintenancePhoto) {
-  return (
-    photo?.caption ||
-    photo?.filename ||
-    photo?.id ||
-    getPhotoPreviewUrl(photo) ||
-    "Photo"
-  );
-}
-
 function getPhotoCandidateValues(photo: SourceMaintenancePhoto) {
   return [
     photo.id,
@@ -812,10 +802,6 @@ function getPhotoCandidateValues(photo: SourceMaintenancePhoto) {
     photo.taskId,
     getPhotoPreviewUrl(photo),
   ].filter((value): value is string => Boolean(value));
-}
-
-function photoReferenceToText(reference: string | SourceMaintenancePhoto) {
-  return typeof reference === "string" ? reference : getPhotoReferenceLabel(reference);
 }
 
 function normalizeMatchValue(value?: string) {
@@ -899,6 +885,11 @@ function findSourceTaskForActivity(
       task.task,
       task.id,
       task.taskTemplateId,
+      ...(task.photos?.flatMap((photo) => [
+        photo.caption,
+        photo.filename,
+        photo.id,
+      ]) || []),
     ]
       .map(normalizeMatchValue)
       .filter(Boolean);
@@ -971,6 +962,68 @@ function matchPhotoReference(
   });
 }
 
+type ResolvedActivityPhoto = {
+  key: string;
+  src: string;
+  caption: string;
+};
+
+function getPhotoRenderKey(photo: SourceMaintenancePhoto) {
+  return (
+    photo.id ||
+    getPhotoPreviewUrl(photo) ||
+    photo.filename ||
+    photo.caption ||
+    JSON.stringify(photo)
+  );
+}
+
+function toResolvedActivityPhoto(
+  reference: string | SourceMaintenancePhoto,
+  sourceReport: SourceMachineMaintenanceReport
+): ResolvedActivityPhoto | null {
+  const matchedPhoto = matchPhotoReference(reference, sourceReport);
+
+  if (matchedPhoto) {
+    const previewUrl = getPhotoPreviewUrl(matchedPhoto);
+    if (!previewUrl) return null;
+
+    return {
+      key: getPhotoRenderKey(matchedPhoto),
+      src: resolvePhotoUrl(previewUrl),
+      caption: matchedPhoto.caption || matchedPhoto.filename || "Photo",
+    };
+  }
+
+  if (typeof reference === "string" && isImageReference(reference)) {
+    return {
+      key: reference,
+      src: resolvePhotoUrl(reference),
+      caption: reference,
+    };
+  }
+
+  return null;
+}
+
+function resolveActivityPhotos(
+  references: Array<string | SourceMaintenancePhoto>,
+  sourceReport: SourceMachineMaintenanceReport
+) {
+  const seen = new Set<string>();
+  const resolvedPhotos: ResolvedActivityPhoto[] = [];
+
+  references.forEach((reference) => {
+    const photo = toResolvedActivityPhoto(reference, sourceReport);
+    if (!photo || seen.has(photo.key)) return;
+
+    seen.add(photo.key);
+    resolvedPhotos.push(photo);
+  });
+
+  return resolvedPhotos;
+}
+
 function ActivityCard({
   activity,
   index,
@@ -984,18 +1037,12 @@ function ActivityCard({
   isEditing: boolean;
   onDelete: () => void;
 }) {
-  const matchedPhotos = activity.photos
-    .map((photo) => matchPhotoReference(photo, sourceReport))
-    .filter((photo): photo is SourceMaintenancePhoto => Boolean(photo));
-
-  const unmatchedPhotoRefs = activity.photos.filter(
-    (photo) => !matchPhotoReference(photo, sourceReport)
-  );
+  const activityPhotos = resolveActivityPhotos(activity.photos, sourceReport);
   const measuredValue = `${activity.measuredValue || ""} ${activity.unit || ""}`.trim();
   const hasNotes = Boolean(activity.notes.trim());
   const hasMeasuredValue = Boolean(measuredValue);
   const shouldShowActivityDetails = hasNotes || hasMeasuredValue;
-  const hasActivityPhotos = matchedPhotos.length > 0 || unmatchedPhotoRefs.length > 0;
+  const hasActivityPhotos = activityPhotos.length > 0;
 
   return (
     <article className="avoid-break group border border-slate-300 bg-white">
@@ -1047,55 +1094,26 @@ function ActivityCard({
             Photos
           </p>
           <div className="mt-2 grid gap-2 md:grid-cols-2">
-            {matchedPhotos.map((photo, photoIndex) => (
+            {activityPhotos.map((photo, photoIndex) => (
               <figure
-                key={`${photo.id || photo.filename || photoIndex}-${photoIndex}`}
+                key={`${photo.key}-${photoIndex}`}
                 className="overflow-hidden border border-slate-300 bg-slate-50"
               >
                 <div className="h-[34mm]">
                   <SwappableImage
-                    src={resolvePhotoUrl(getPhotoPreviewUrl(photo))}
-                    alt={photo.caption || photo.filename || `Activity photo ${photoIndex + 1}`}
+                    src={photo.src}
+                    alt={photo.caption || `Activity photo ${photoIndex + 1}`}
                     className="h-full w-full object-cover"
                     emptyText="Photo unavailable"
                   />
                 </div>
                 <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
                   <EditableText multiline>
-                    {photo.caption || photo.filename || `Photo ${photoIndex + 1}`}
+                    {photo.caption || `Photo ${photoIndex + 1}`}
                   </EditableText>
                 </figcaption>
               </figure>
             ))}
-
-            {unmatchedPhotoRefs.map((photo, photoIndex) =>
-              typeof photo === "string" &&
-              isImageReference(photo) ? (
-                <figure
-                  key={`${photo}-${photoIndex}`}
-                  className="overflow-hidden border border-slate-300 bg-slate-50"
-                >
-                  <div className="h-[34mm]">
-                    <SwappableImage
-                      src={resolvePhotoUrl(photo)}
-                      alt={`Activity photo ${photoIndex + 1}`}
-                      className="h-full w-full object-cover"
-                      emptyText="Photo unavailable"
-                    />
-                  </div>
-                  <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
-                    <EditableText>{photo}</EditableText>
-                  </figcaption>
-                </figure>
-              ) : (
-                <div
-                  key={`${photoReferenceToText(photo)}-${photoIndex}`}
-                  className="border border-slate-300 bg-slate-50 p-2 text-xs text-slate-700"
-                >
-                  <EditableText>{photoReferenceToText(photo)}</EditableText>
-                </div>
-              )
-            )}
           </div>
         </div>
       ) : null}

@@ -171,6 +171,7 @@ const initialPages: ReportPage[] = [
 ];
 
 function resolvePhotoUrl(url?: string) {
+  console.log("Resolving photo URL:", url);
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   return `${API_BASE_URL}${url}`;

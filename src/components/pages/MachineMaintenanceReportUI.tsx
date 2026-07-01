@@ -262,6 +262,7 @@ type NormalizedMaintenanceReport = {
 };
 
 function resolvePhotoUrl(url?: string) {
+  console.log("Resolving photo URL:", url);
   if (!url) return "";
   const trimmedUrl = url.trim();
 

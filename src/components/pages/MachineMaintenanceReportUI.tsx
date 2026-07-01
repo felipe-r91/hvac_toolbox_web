@@ -83,7 +83,7 @@ export type MaintenanceActivityItem = {
   measuredValue?: string;
   unit?: string;
   completedAt?: string;
-  photos?: string[];
+  photos?: Array<string | SourceMaintenancePhoto>;
 };
 
 type SourceMaintenancePhoto = {
@@ -91,6 +91,11 @@ type SourceMaintenancePhoto = {
   filename?: string;
   caption?: string;
   previewUrl?: string;
+  photoUrl?: string;
+  url?: string;
+  downloadUrl?: string;
+  fileUrl?: string;
+  path?: string;
   taskId?: string;
 };
 
@@ -258,8 +263,22 @@ type NormalizedMaintenanceReport = {
 
 function resolvePhotoUrl(url?: string) {
   if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  return `${API_BASE_URL}${url}`;
+  const trimmedUrl = url.trim();
+
+  if (
+    trimmedUrl.startsWith("http://") ||
+    trimmedUrl.startsWith("https://") ||
+    trimmedUrl.startsWith("data:") ||
+    trimmedUrl.startsWith("blob:")
+  ) {
+    return trimmedUrl;
+  }
+
+  const normalizedPath = trimmedUrl.startsWith("/")
+    ? trimmedUrl
+    : `/${trimmedUrl}`;
+
+  return `${API_BASE_URL}${normalizedPath}`;
 }
 
 function formatDate(value?: string) {
@@ -285,7 +304,13 @@ function isImageReference(value?: string) {
   return (
     value.startsWith("http://") ||
     value.startsWith("https://") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:") ||
     value.startsWith("/") ||
+    value.startsWith("api/") ||
+    value.startsWith("uploads/") ||
+    value.startsWith("files/") ||
+    value.startsWith("photos/") ||
     /\.(png|jpe?g|webp|gif)$/i.test(value)
   );
 }
@@ -755,6 +780,42 @@ function normalizeAlarmChunks(chunks: Required<MaintenanceAlarmItem>[][]) {
   return nextChunks.length > 0 ? nextChunks : [[]];
 }
 
+function getPhotoPreviewUrl(photo?: SourceMaintenancePhoto) {
+  return (
+    photo?.previewUrl ||
+    photo?.photoUrl ||
+    photo?.url ||
+    photo?.downloadUrl ||
+    photo?.fileUrl ||
+    photo?.path ||
+    ""
+  );
+}
+
+function getPhotoReferenceLabel(photo?: SourceMaintenancePhoto) {
+  return (
+    photo?.caption ||
+    photo?.filename ||
+    photo?.id ||
+    getPhotoPreviewUrl(photo) ||
+    "Photo"
+  );
+}
+
+function getPhotoCandidateValues(photo: SourceMaintenancePhoto) {
+  return [
+    photo.id,
+    photo.filename,
+    photo.caption,
+    photo.taskId,
+    getPhotoPreviewUrl(photo),
+  ].filter((value): value is string => Boolean(value));
+}
+
+function photoReferenceToText(reference: string | SourceMaintenancePhoto) {
+  return typeof reference === "string" ? reference : getPhotoReferenceLabel(reference);
+}
+
 function normalizeActivities(
   aiActivities?: MaintenanceActivityItem[],
   sourceTasks?: SourceMaintenanceTask[]
@@ -771,7 +832,10 @@ function normalizeActivities(
           measuredValue: task.measuredValue,
           unit: task.unit,
           completedAt: task.completedAt,
-          photos: task.photoIds || task.photos?.map((photo) => photo.id || photo.filename || ""),
+          photos: [
+            ...(task.photos || []),
+            ...(task.photoIds || []),
+          ],
         })) || [];
 
   return activities
@@ -784,21 +848,26 @@ function normalizeActivities(
       measuredValue: activity.measuredValue || "",
       unit: activity.unit || "",
       completedAt: activity.completedAt || "",
-      photos: activity.photos || [],
+      photos: activity.photos?.filter(Boolean) || [],
     }))
     .filter((activity) => activity.status.toLowerCase() !== "skipped");
 }
 
 function matchPhotoReference(
-  reference: string,
+  reference: string | SourceMaintenancePhoto,
   sourceReport: SourceMachineMaintenanceReport
 ) {
+  if (typeof reference !== "string") {
+    return reference;
+  }
+
   const term = reference.toLowerCase();
 
   return sourceReport.photos?.find((photo) => {
-    return [photo.id, photo.filename, photo.caption, photo.taskId]
-      .filter(Boolean)
-      .some((value) => term.includes(String(value).toLowerCase()));
+    return getPhotoCandidateValues(photo).some((value) => {
+      const normalizedValue = value.toLowerCase();
+      return term.includes(normalizedValue) || normalizedValue.includes(term);
+    });
   });
 }
 
@@ -884,7 +953,7 @@ function ActivityCard({
                   >
                     <div className="h-[34mm]">
                       <SwappableImage
-                        src={resolvePhotoUrl(photo.previewUrl)}
+                        src={resolvePhotoUrl(getPhotoPreviewUrl(photo))}
                         alt={photo.caption || photo.filename || `Activity photo ${photoIndex + 1}`}
                         className="h-full w-full object-cover"
                         emptyText="Photo unavailable"
@@ -899,6 +968,7 @@ function ActivityCard({
                 ))}
 
                 {unmatchedPhotoRefs.map((photo, photoIndex) =>
+                  typeof photo === "string" &&
                   isImageReference(photo) ? (
                     <figure
                       key={`${photo}-${photoIndex}`}
@@ -918,10 +988,10 @@ function ActivityCard({
                     </figure>
                   ) : (
                     <div
-                      key={`${photo}-${photoIndex}`}
+                      key={`${photoReferenceToText(photo)}-${photoIndex}`}
                       className="border border-slate-300 bg-slate-50 p-2 text-xs text-slate-700"
                     >
-                      <EditableText>{photo}</EditableText>
+                      <EditableText>{photoReferenceToText(photo)}</EditableText>
                     </div>
                   )
                 )}
@@ -1480,7 +1550,7 @@ export default function MachineMaintenanceReportUI({
               >
                 <div className="h-[70mm]">
                   <SwappableImage
-                    src={resolvePhotoUrl(photo.previewUrl)}
+                    src={resolvePhotoUrl(getPhotoPreviewUrl(photo))}
                     alt={photo.caption || `Photo ${index + 1}`}
                     className="h-full w-full object-cover"
                     emptyText="Photo unavailable"

@@ -816,6 +816,83 @@ function photoReferenceToText(reference: string | SourceMaintenancePhoto) {
   return typeof reference === "string" ? reference : getPhotoReferenceLabel(reference);
 }
 
+function normalizeMatchValue(value?: string) {
+  return (value || "").trim().toLowerCase();
+}
+
+function getTaskPhotoReferences(task?: SourceMaintenanceTask) {
+  if (!task) return [];
+
+  return [
+    ...(task.photos || []),
+    ...(task.photoIds || []),
+  ];
+}
+
+function getPhotoReferenceKey(reference: string | SourceMaintenancePhoto) {
+  if (typeof reference === "string") return reference;
+
+  return (
+    reference.id ||
+    getPhotoPreviewUrl(reference) ||
+    reference.filename ||
+    reference.caption ||
+    JSON.stringify(reference)
+  );
+}
+
+function mergePhotoReferences(
+  primary?: Array<string | SourceMaintenancePhoto>,
+  secondary?: Array<string | SourceMaintenancePhoto>
+) {
+  const seen = new Set<string>();
+  const merged: Array<string | SourceMaintenancePhoto> = [];
+
+  [...(primary || []), ...(secondary || [])].forEach((reference) => {
+    if (!reference) return;
+
+    const key = getPhotoReferenceKey(reference);
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    merged.push(reference);
+  });
+
+  return merged;
+}
+
+function findSourceTaskForActivity(
+  activity: MaintenanceActivityItem,
+  sourceTasks?: SourceMaintenanceTask[]
+) {
+  if (!sourceTasks?.length) return undefined;
+
+  const activityTask = normalizeMatchValue(activity.task);
+  const activityCategory = normalizeMatchValue(activity.category);
+
+  return sourceTasks.find((task) => {
+    const taskLabels = [
+      task.taskName,
+      task.task,
+      task.id,
+      task.taskTemplateId,
+    ]
+      .map(normalizeMatchValue)
+      .filter(Boolean);
+
+    const taskMatches =
+      Boolean(activityTask) &&
+      taskLabels.some(
+        (label) => label === activityTask || label.includes(activityTask) || activityTask.includes(label)
+      );
+
+    if (!taskMatches) return false;
+    if (!activityCategory) return true;
+
+    return normalizeMatchValue(task.category) === activityCategory;
+  });
+}
+
 function normalizeActivities(
   aiActivities?: MaintenanceActivityItem[],
   sourceTasks?: SourceMaintenanceTask[]
@@ -832,25 +909,34 @@ function normalizeActivities(
           measuredValue: task.measuredValue,
           unit: task.unit,
           completedAt: task.completedAt,
-          photos: [
-            ...(task.photos || []),
-            ...(task.photoIds || []),
-          ],
+          photos: getTaskPhotoReferences(task),
         })) || [];
 
   return activities
-    .map((activity) => ({
-      category: activity.category || "-",
-      task: activity.task || "-",
-      tool: activity.tool || "",
-      status: activity.status || "",
-      notes: activity.notes || "",
-      measuredValue: activity.measuredValue || "",
-      unit: activity.unit || "",
-      completedAt: activity.completedAt || "",
-      photos: activity.photos?.filter(Boolean) || [],
-    }))
+    .map((activity, index) => {
+      const sourceTask =
+        findSourceTaskForActivity(activity, sourceTasks) || sourceTasks?.[index];
+
+      return {
+        category: activity.category || sourceTask?.category || "-",
+        task: activity.task || sourceTask?.taskName || sourceTask?.task || "-",
+        tool: activity.tool || sourceTask?.tool || "",
+        status: activity.status || sourceTask?.status || "",
+        notes: activity.notes || sourceTask?.notes || "",
+        measuredValue: activity.measuredValue || sourceTask?.measuredValue || "",
+        unit: activity.unit || sourceTask?.unit || "",
+        completedAt: activity.completedAt || sourceTask?.completedAt || "",
+        photos: mergePhotoReferences(activity.photos, getTaskPhotoReferences(sourceTask)),
+      };
+    })
     .filter((activity) => activity.status.toLowerCase() !== "skipped");
+}
+
+function getAllSourcePhotos(sourceReport: SourceMachineMaintenanceReport) {
+  return [
+    ...(sourceReport.photos || []),
+    ...(sourceReport.tasks?.flatMap((task) => task.photos || []) || []),
+  ];
 }
 
 function matchPhotoReference(
@@ -863,7 +949,7 @@ function matchPhotoReference(
 
   const term = reference.toLowerCase();
 
-  return sourceReport.photos?.find((photo) => {
+  return getAllSourcePhotos(sourceReport).find((photo) => {
     return getPhotoCandidateValues(photo).some((value) => {
       const normalizedValue = value.toLowerCase();
       return term.includes(normalizedValue) || normalizedValue.includes(term);
@@ -895,6 +981,7 @@ function ActivityCard({
   const hasNotes = Boolean(activity.notes.trim());
   const hasMeasuredValue = Boolean(measuredValue);
   const shouldShowActivityDetails = hasNotes || hasMeasuredValue;
+  const hasActivityPhotos = matchedPhotos.length > 0 || unmatchedPhotoRefs.length > 0;
 
   return (
     <article className="avoid-break group border border-slate-300 bg-white">
@@ -922,83 +1009,81 @@ function ActivityCard({
       </div>
 
       {shouldShowActivityDetails ? (
-        <>
-          <div className="border-t border-slate-300 px-3 py-2">
-            {hasMeasuredValue ? (
-              <InfoRow label="Measured Value" value={measuredValue} />
-            ) : null}
+        <div className="border-t border-slate-300 px-3 py-2">
+          {hasMeasuredValue ? (
+            <InfoRow label="Measured Value" value={measuredValue} />
+          ) : null}
 
-            {hasNotes ? (
-              <>
-                <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                  Notes
-                </p>
-                <EditableText multiline className="mt-1 block text-xs leading-5 text-slate-700">
-                  {activity.notes}
-                </EditableText>
-              </>
-            ) : null}
-          </div>
-
-          {(matchedPhotos.length > 0 || unmatchedPhotoRefs.length > 0) && (
-            <div className="border-t border-slate-300 px-3 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                Photos
+          {hasNotes ? (
+            <>
+              <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                Notes
               </p>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
-                {matchedPhotos.map((photo, photoIndex) => (
-                  <figure
-                    key={`${photo.id || photo.filename || photoIndex}-${photoIndex}`}
-                    className="overflow-hidden border border-slate-300 bg-slate-50"
-                  >
-                    <div className="h-[34mm]">
-                      <SwappableImage
-                        src={resolvePhotoUrl(getPhotoPreviewUrl(photo))}
-                        alt={photo.caption || photo.filename || `Activity photo ${photoIndex + 1}`}
-                        className="h-full w-full object-cover"
-                        emptyText="Photo unavailable"
-                      />
-                    </div>
-                    <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
-                      <EditableText multiline>
-                        {photo.caption || photo.filename || `Photo ${photoIndex + 1}`}
-                      </EditableText>
-                    </figcaption>
-                  </figure>
-                ))}
+              <EditableText multiline className="mt-1 block text-xs leading-5 text-slate-700">
+                {activity.notes}
+              </EditableText>
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
-                {unmatchedPhotoRefs.map((photo, photoIndex) =>
-                  typeof photo === "string" &&
-                  isImageReference(photo) ? (
-                    <figure
-                      key={`${photo}-${photoIndex}`}
-                      className="overflow-hidden border border-slate-300 bg-slate-50"
-                    >
-                      <div className="h-[34mm]">
-                        <SwappableImage
-                          src={resolvePhotoUrl(photo)}
-                          alt={`Activity photo ${photoIndex + 1}`}
-                          className="h-full w-full object-cover"
-                          emptyText="Photo unavailable"
-                        />
-                      </div>
-                      <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
-                        <EditableText>{photo}</EditableText>
-                      </figcaption>
-                    </figure>
-                  ) : (
-                    <div
-                      key={`${photoReferenceToText(photo)}-${photoIndex}`}
-                      className="border border-slate-300 bg-slate-50 p-2 text-xs text-slate-700"
-                    >
-                      <EditableText>{photoReferenceToText(photo)}</EditableText>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          )}
-        </>
+      {hasActivityPhotos ? (
+        <div className="border-t border-slate-300 px-3 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+            Photos
+          </p>
+          <div className="mt-2 grid gap-2 md:grid-cols-2">
+            {matchedPhotos.map((photo, photoIndex) => (
+              <figure
+                key={`${photo.id || photo.filename || photoIndex}-${photoIndex}`}
+                className="overflow-hidden border border-slate-300 bg-slate-50"
+              >
+                <div className="h-[34mm]">
+                  <SwappableImage
+                    src={resolvePhotoUrl(getPhotoPreviewUrl(photo))}
+                    alt={photo.caption || photo.filename || `Activity photo ${photoIndex + 1}`}
+                    className="h-full w-full object-cover"
+                    emptyText="Photo unavailable"
+                  />
+                </div>
+                <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
+                  <EditableText multiline>
+                    {photo.caption || photo.filename || `Photo ${photoIndex + 1}`}
+                  </EditableText>
+                </figcaption>
+              </figure>
+            ))}
+
+            {unmatchedPhotoRefs.map((photo, photoIndex) =>
+              typeof photo === "string" &&
+              isImageReference(photo) ? (
+                <figure
+                  key={`${photo}-${photoIndex}`}
+                  className="overflow-hidden border border-slate-300 bg-slate-50"
+                >
+                  <div className="h-[34mm]">
+                    <SwappableImage
+                      src={resolvePhotoUrl(photo)}
+                      alt={`Activity photo ${photoIndex + 1}`}
+                      className="h-full w-full object-cover"
+                      emptyText="Photo unavailable"
+                    />
+                  </div>
+                  <figcaption className="p-2 text-[10px] leading-4 text-slate-600">
+                    <EditableText>{photo}</EditableText>
+                  </figcaption>
+                </figure>
+              ) : (
+                <div
+                  key={`${photoReferenceToText(photo)}-${photoIndex}`}
+                  className="border border-slate-300 bg-slate-50 p-2 text-xs text-slate-700"
+                >
+                  <EditableText>{photoReferenceToText(photo)}</EditableText>
+                </div>
+              )
+            )}
+          </div>
+        </div>
       ) : null}
     </article>
   );

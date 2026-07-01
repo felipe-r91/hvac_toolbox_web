@@ -840,38 +840,6 @@ function getTaskPhotoReferences(task?: SourceMaintenanceTask) {
   ];
 }
 
-function getPhotoReferenceKey(reference: string | SourceMaintenancePhoto) {
-  if (typeof reference === "string") return reference;
-
-  return (
-    reference.id ||
-    getPhotoPreviewUrl(reference) ||
-    reference.filename ||
-    reference.caption ||
-    JSON.stringify(reference)
-  );
-}
-
-function mergePhotoReferences(
-  primary?: Array<string | SourceMaintenancePhoto>,
-  secondary?: Array<string | SourceMaintenancePhoto>
-) {
-  const seen = new Set<string>();
-  const merged: Array<string | SourceMaintenancePhoto> = [];
-
-  [...(primary || []), ...(secondary || [])].forEach((reference) => {
-    if (!reference) return;
-
-    const key = getPhotoReferenceKey(reference);
-    if (seen.has(key)) return;
-
-    seen.add(key);
-    merged.push(reference);
-  });
-
-  return merged;
-}
-
 function findSourceTaskForActivity(
   activity: MaintenanceActivityItem,
   sourceTasks?: SourceMaintenanceTask[]
@@ -921,9 +889,9 @@ function normalizeActivities(
         })) || [];
 
   return activities
-    .map((activity, index) => {
-      const sourceTask =
-        findSourceTaskForActivity(activity, sourceTasks) || sourceTasks?.[index];
+    .map((activity) => {
+      const sourceTask = findSourceTaskForActivity(activity, sourceTasks);
+      const sourceTaskPhotos = getTaskPhotoReferences(sourceTask);
 
       return {
         category: activity.category || sourceTask?.category || "-",
@@ -934,7 +902,10 @@ function normalizeActivities(
         measuredValue: activity.measuredValue || sourceTask?.measuredValue || "",
         unit: activity.unit || sourceTask?.unit || "",
         completedAt: activity.completedAt || sourceTask?.completedAt || "",
-        photos: mergePhotoReferences(activity.photos, getTaskPhotoReferences(sourceTask)),
+        photos:
+          sourceTaskPhotos.length > 0
+            ? sourceTaskPhotos
+            : activity.photos?.filter(Boolean) || [],
       };
     })
     .filter((activity) => activity.status.toLowerCase() !== "skipped");
@@ -1037,7 +1008,10 @@ function ActivityCard({
   isEditing: boolean;
   onDelete: () => void;
 }) {
-  const activityPhotos = resolveActivityPhotos(activity.photos, sourceReport);
+  const activityPhotos = React.useMemo(
+    () => resolveActivityPhotos(activity.photos, sourceReport),
+    [activity.photos, sourceReport]
+  );
   const measuredValue = `${activity.measuredValue || ""} ${activity.unit || ""}`.trim();
   const hasNotes = Boolean(activity.notes.trim());
   const hasMeasuredValue = Boolean(measuredValue);

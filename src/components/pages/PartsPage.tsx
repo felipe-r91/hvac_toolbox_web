@@ -128,6 +128,7 @@ export function PartsPage() {
   const [deleting, setDeleting] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [selectedPhotoPreview, setSelectedPhotoPreview] = useState("");
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const filteredParts = useMemo(
@@ -213,6 +214,7 @@ export function PartsPage() {
   const startNewPart = () => {
     setDraft(createEmptyDraft());
     setSelectedPhoto(null);
+    setPhotoViewerOpen(false);
     setNotice(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -222,6 +224,7 @@ export function PartsPage() {
       setRetrievingId(partId);
       setNotice(null);
       setSelectedPhoto(null);
+      setPhotoViewerOpen(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       const part = await getPartById(partId);
@@ -276,6 +279,7 @@ export function PartsPage() {
 
       await loadParts(finalPart.id);
       setSelectedPhoto(null);
+      setPhotoViewerOpen(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       setNotice({
@@ -307,6 +311,7 @@ export function PartsPage() {
       setParts(data);
       setDraft(data[0] ? partToDraft(data[0]) : createEmptyDraft());
       setSelectedPhoto(null);
+      setPhotoViewerOpen(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       setNotice({ tone: "success", message: "Part deleted." });
@@ -447,14 +452,41 @@ export function PartsPage() {
                         >
                           {part.manufacturerModel}
                         </span>
-                        <span
-                          className={`mt-2 inline-flex max-w-full rounded-full px-2.5 py-1 text-xs font-medium ${
-                            isSelected
-                              ? "bg-white/10 text-white"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          <span className="truncate">{part.tag}</span>
+                        <span className="mt-2 flex flex-wrap gap-1.5">
+                          <span
+                            className={`inline-flex max-w-full rounded-full px-2.5 py-1 text-xs font-medium ${
+                              isSelected
+                                ? "bg-white/10 text-white"
+                                : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            <span className="truncate">{part.tag}</span>
+                          </span>
+
+                          {part.machinesModelHavingIt.slice(0, 2).map((model) => (
+                            <span
+                              key={`${part.id}-${model}`}
+                              className={`inline-flex max-w-full rounded-full px-2.5 py-1 text-xs font-medium ${
+                                isSelected
+                                  ? "bg-cyan-400/15 text-cyan-50 ring-1 ring-cyan-200/20"
+                                  : "bg-cyan-50 text-cyan-800 ring-1 ring-cyan-100"
+                              }`}
+                            >
+                              <span className="truncate">{model}</span>
+                            </span>
+                          ))}
+
+                          {part.machinesModelHavingIt.length > 2 ? (
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                                isSelected
+                                  ? "bg-white/10 text-slate-100"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              +{part.machinesModelHavingIt.length - 2}
+                            </span>
+                          ) : null}
                         </span>
                       </span>
                     </button>
@@ -526,7 +558,18 @@ export function PartsPage() {
           <div className="min-h-0 flex-1 overflow-auto p-5">
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-[16rem_minmax(0,1fr)]">
               <div>
-                <div className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (photoUrl) setPhotoViewerOpen(true);
+                  }}
+                  disabled={!photoUrl}
+                  title={photoUrl ? "Open larger part image" : undefined}
+                  aria-label={photoUrl ? "Open larger part image" : undefined}
+                  className={`flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-2xl bg-slate-100 text-left ring-1 ring-slate-200 transition ${
+                    photoUrl ? "cursor-zoom-in hover:opacity-90" : "cursor-default"
+                  }`}
+                >
                   {photoUrl ? (
                     <img
                       src={photoUrl}
@@ -539,7 +582,7 @@ export function PartsPage() {
                       No part photo
                     </div>
                   )}
-                </div>
+                </button>
 
                 <label className="mt-4 block">
                   <span className="mb-1 block text-sm font-medium text-slate-600">
@@ -669,6 +712,50 @@ export function PartsPage() {
           </div>
         </section>
       </section>
+
+      {photoViewerOpen && photoUrl ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Part image preview"
+          onClick={() => setPhotoViewerOpen(false)}
+        >
+          <div
+            className="relative flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-semibold text-slate-900">
+                  {draft.jciPartNumber || "Part image"}
+                </h2>
+                <p className="mt-1 truncate text-sm text-slate-500">
+                  {draft.manufacturerModel || draft.tag || "Photo preview"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPhotoViewerOpen(false)}
+                title="Close image preview"
+                aria-label="Close image preview"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 hover:bg-slate-200"
+              >
+                <FaTimes className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-100 p-4">
+              <img
+                src={photoUrl}
+                alt={draft.jciPartNumber || "Part"}
+                className="max-h-[75vh] max-w-full rounded-2xl object-contain shadow-sm"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

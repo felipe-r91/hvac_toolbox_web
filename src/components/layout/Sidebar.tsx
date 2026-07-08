@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   FaChartLine,
+  FaCubes,
   FaFileAlt,
   FaMagic,
   FaShip,
@@ -16,6 +17,7 @@ const navItems = [
   { to: "/reports", label: "Reports", icon: FaFileAlt },
   { to: "/vessels", label: "Vessels", icon: FaShip },
   { to: "/machines", label: "Machines", icon: FaTools },
+  { to: "/parts", label: "Parts", icon: FaCubes },
   { to: "/ai-generation", label: "AI Generation", icon: FaMagic },
   { to: "/task-plans", label: "Task Plans", icon: FaTasks },
   { to: "/insights", label: "Insights", icon: FaChartLine },
